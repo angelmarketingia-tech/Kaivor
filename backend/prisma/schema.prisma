@@ -769,3 +769,69 @@ model PrintLog {
   @@index([tenantId])
   @@index([entity, entityId])
 }
+
+// ─── v3: WhatsApp AI Agent ────────────────────────────────────────────────────
+
+model WhatsappAgentConfig {
+  id              String   @id @default(cuid())
+  tenantId        String   @unique
+  enabled         Boolean  @default(false)
+
+  // Meta WhatsApp Cloud API
+  metaPhoneNumberId      String?
+  metaWabaId             String?
+  metaAccessTokenEnc     String?  // AES-256 encrypted
+  metaWebhookVerifyToken String?  // verify token for GET challenge
+  metaAppSecretEnc       String?  // for HMAC signature verification (optional)
+
+  // Agent behavior
+  agentName       String   @default("Asistente Kaivor")
+  systemPrompt    String   @default("Eres un asistente comercial de la empresa. Responde de forma amable, breve y útil. Si necesitas datos del cliente o del negocio, usa las herramientas disponibles.")
+  model           String   @default("deepseek-chat")
+  temperature     Float    @default(0.5)
+  maxTurns        Int      @default(20)  // safety: max LLM tool calls per turn
+
+  // Limits
+  monthlyMessageLimit Int  @default(500)
+  monthlyMessageCount Int  @default(0)
+  monthlyResetAt      DateTime?
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model WhatsappConversation {
+  id            String   @id @default(cuid())
+  tenantId      String
+  phoneNumber   String   // Customer's phone (E.164 without +)
+  customerId    String?  // Linked Customer if matched
+  status        String   @default("active") // active, paused, taken_over_by_human, closed
+  lastMessageAt DateTime @default(now())
+  unreadCount   Int      @default(0)
+  contextSummary String? // Optional running summary of long conversations
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  messages WhatsappMessage[]
+
+  @@unique([tenantId, phoneNumber])
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model WhatsappMessage {
+  id             String   @id @default(cuid())
+  tenantId       String
+  conversationId String
+  role           String   // user, agent, system, human (admin took over)
+  content        String
+  metaMessageId  String?  // Meta's wamid
+  toolCalls      Json?    // record what tools were called
+  status         String   @default("sent") // sent, delivered, read, failed
+  createdAt      DateTime @default(now())
+
+  conversation WhatsappConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([tenantId])
+}

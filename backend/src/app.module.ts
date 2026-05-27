@@ -31,6 +31,7 @@ import { AdminModule } from './modules/admin/admin.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { SupportModule } from './modules/support/support.module';
 import { DianModule } from './modules/dian/dian.module';
+import { WhatsappAgentModule } from './modules/whatsapp-agent/whatsapp-agent.module';
 
 @Module({
   imports: [
@@ -71,6 +72,7 @@ import { DianModule } from './modules/dian/dian.module';
     SuppliersModule,
     SupportModule,
     DianModule,
+    WhatsappAgentModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

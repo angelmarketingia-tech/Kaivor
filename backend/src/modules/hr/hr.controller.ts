@@ -1,0 +1,71 @@
+import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { HrService } from './hr.service';
+import { PrismaService } from '@/prisma/prisma.service';
+
+@Controller('hr')
+@UseGuards(AuthGuard('jwt'))
+export class HrController {
+  constructor(private hr: HrService, private prisma: PrismaService) {}
+
+  @Get('summary')
+  summary(@Request() req: any) {
+    return this.hr.summary(req.user.tenantId);
+  }
+
+  @Get('employees')
+  listEmployees(@Request() req: any) {
+    return this.hr.listEmployees(req.user.tenantId);
+  }
+
+  @Post('employees')
+  createEmployee(@Request() req: any, @Body() body: any) {
+    return this.hr.createEmployee(req.user.tenantId, body);
+  }
+
+  @Get('payroll')
+  listPayroll(@Request() req: any) {
+    return this.hr.listPayroll(req.user.tenantId);
+  }
+
+  @Post('payroll')
+  createPayroll(@Request() req: any, @Body() body: any) {
+    return this.hr.createPayroll(req.user.tenantId, body);
+  }
+
+  @Get('balances')
+  listBalances(@Request() req: any) {
+    return this.hr.listBalances(req.user.tenantId);
+  }
+
+  @Get('vacancies')
+  listVacancies(@Request() req: any) {
+    return this.hr.listVacancies(req.user.tenantId);
+  }
+
+  @Post('vacancies')
+  createVacancy(@Request() req: any, @Body() body: any) {
+    return this.hr.createVacancy(req.user.tenantId, body);
+  }
+
+  @Get('vacancies/:id')
+  getVacancy(@Request() req: any, @Param('id') id: string) {
+    return this.hr.getVacancy(req.user.tenantId, id);
+  }
+
+  @Patch('vacancies/:id')
+  updateVacancy(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.hr.updateVacancy(req.user.tenantId, id, body);
+  }
+
+  @Post('candidates')
+  createCandidate(@Request() req: any, @Body() body: any) {
+    return this.hr.createCandidate(req.user.tenantId, body);
+  }
+
+  @Post('ai')
+  async ai(@Request() req: any, @Body('question') question: string) {
+    const sub = await this.prisma.subscription.findUnique({ where: { tenantId: req.user.tenantId }, select: { plan: true } });
+    return this.hr.ask(req.user.tenantId, question, sub?.plan || 'FREE');
+  }
+}

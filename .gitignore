@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+package-lock.json
+yarn.lock
+
+# Development
+.env
+.env.*
+!.env.example
+.DS_Store
+*.log
+
+# Build
+dist/
+build/
+.next/
+
+# IDE
+.vscode/
+.idea/
+
+# Claude Code local settings (may contain secrets/tokens)
+.claude/settings.local.json
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# Testing
+coverage/
+.nyc_output/
+cypress/screenshots/
+cypress/videos/
+
+# Docker
+.docker/
+.dockerignore
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Certificates
+certs/
+*.p12
+*.pem
+
+# Database
+postgres_data/
+*.db
+
+# Temporary
+tmp/
+temp/

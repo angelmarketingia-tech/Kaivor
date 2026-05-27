@@ -1,0 +1,17 @@
+{
+  "name": "admia",
+  "version": "1.0.0",
+  "description": "ADMIA is a DIAN-compliant electronic invoicing (facturación electrónica) platform designed for small and medium-sized enterprises (SMEs) in Colombia. It provides integrated invoicing, inventory management, POS system, and advanced features with AI support.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "cypress": "^13.17.0"
+  }
+}

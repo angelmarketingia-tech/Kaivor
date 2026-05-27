@@ -1,0 +1,675 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Tenants (multi-tenancy)
+model Tenant {
+  id        String     @id @default(cuid())
+  slug      String     @unique
+  name      String
+  plan      String     @default("free") // free, pro, enterprise
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  isActive  Boolean    @default(true)
+
+  // Relations
+  users     User[]
+  companies Company[]
+
+  @@index([slug])
+  @@index([isActive])
+}
+
+// Users
+model User {
+  id        String   @id @default(cuid())
+  tenantId  String
+  email     String
+  name      String?
+  password  String
+  role      String   @default("cashier") // admin, manager, cashier, accountant, viewer
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  transactions  Transaction[]
+  invoices      Invoice[]
+  auditLogs     AuditLog[]
+
+  @@unique([tenantId, email])
+  @@index([tenantId])
+  @@index([email])
+}
+
+// Companies
+model Company {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  taxId     String
+  address   String?
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant       Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  products     Product[]
+  invoices     Invoice[]
+  transactions Transaction[]
+  customers    Customer[]
+
+  @@unique([tenantId, taxId])
+  @@index([tenantId])
+}
+
+// Products
+model Product {
+  id        String   @id @default(cuid())
+  tenantId  String
+  companyId String
+  sku       String
+  name      String
+  category  String?
+  price     Float
+  cost      Float?
+  unit      String?  @default("u")
+  barcode   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  company    Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  inventory  Inventory[]
+  items      TransactionItem[]
+
+  @@unique([tenantId, companyId, sku])
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([barcode])
+}
+
+// Inventory
+model Inventory {
+  id           String   @id @default(cuid())
+  tenantId     String
+  productId    String
+  warehouse    String   @default("default")
+  quantity     BigInt   @default(0)
+  reorderPoint BigInt   @default(10)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  movements InventoryMovement[]
+
+  @@unique([tenantId, productId, warehouse])
+  @@index([tenantId])
+  @@index([productId])
+}
+
+// Inventory Movements
+model InventoryMovement {
+  id          String   @id @default(cuid())
+  tenantId    String
+  inventoryId String
+  type        String   // "sale", "purchase", "adjustment", "return"
+  quantity    BigInt
+  reference   String? // transaction ID or other reference
+  notes       String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  inventory Inventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([inventoryId])
+  @@index([createdAt])
+}
+
+// Customers
+model Customer {
+  id        String   @id @default(cuid())
+  tenantId  String
+  companyId String
+  name      String
+  email     String?
+  phone     String?
+  taxId     String?
+  address   String?
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  company      Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+  invoices     Invoice[]
+
+  @@unique([tenantId, taxId])
+  @@index([tenantId])
+  @@index([companyId])
+}
+
+// Transactions (POS sales, purchases)
+model Transaction {
+  id            String   @id @default(cuid())
+  tenantId      String
+  companyId     String
+  userId        String
+  customerId    String?
+  type          String   @default("sale") // sale, purchase, adjustment
+  reference     String?
+  total         Float
+  taxAmount     Float    @default(0)
+  discountAmount Float   @default(0)
+  status        String   @default("completed") // draft, pending, completed, cancelled
+  notes         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  user       User      @relation(fields: [userId], references: [id])
+  company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items      TransactionItem[]
+  invoice    Invoice?
+
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([userId])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// Transaction Items
+model TransactionItem {
+  id            String   @id @default(cuid())
+  tenantId      String
+  transactionId String
+  productId     String
+  quantity      Float
+  unitPrice     Float
+  discountPercent Float @default(0)
+  taxPercent    Float   @default(0)
+  lineTotal     Float
+
+  // Relations
+  transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  product     Product @relation(fields: [productId], references: [id])
+
+  @@index([tenantId])
+  @@index([transactionId])
+}
+
+// Invoices (DIAN electronic invoices)
+model Invoice {
+  id              String   @id @default(cuid())
+  tenantId        String
+  companyId       String
+  customerId      String
+  transactionId   String?  @unique
+  userId          String?
+  invoiceNumber   String
+  invoiceDate     DateTime
+  dueDate         DateTime?
+  status          String   @default("draft") // draft, sent, accepted, rejected, cancelled
+  subtotal        Float
+  taxAmount       Float    @default(0)
+  discountAmount  Float    @default(0)
+  total           Float
+  notes           String?
+
+  // DIAN Fields
+  dianStatus      String?  // pending, sent, accepted, rejected
+  dianCude        String?  // Unique invoice identifier from DIAN
+  dianUuid        String?  // UUID from DIAN
+  dianSentAt      DateTime?
+  pdfUrl          String?
+  xmlContent      String?  // Stored XML for reference
+
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customer    Customer     @relation(fields: [customerId], references: [id])
+  transaction Transaction? @relation(fields: [transactionId], references: [id])
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  payments    Payment[]
+
+  @@unique([tenantId, invoiceNumber])
+  @@index([tenantId])
+  @@index([companyId])
+  @@index([customerId])
+  @@index([dianStatus])
+  @@index([createdAt])
+}
+
+// Payments
+model Payment {
+  id        String   @id @default(cuid())
+  tenantId  String
+  invoiceId String
+  amount    Float
+  method    String   // cash, card, bank_transfer, wallet
+  reference String?
+  paidAt    DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceId])
+}
+
+// Audit Log
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String?
+  action      String   // created, updated, deleted, viewed
+  resourceType String  // invoice, transaction, customer, etc
+  resourceId  String?
+  changes     Json?    // JSON of what changed
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([resourceType])
+  @@index([createdAt])
+}
+
+// ─── v1.5: Subscription & Usage ───────────────────────────────────────────────
+
+// Subscription — plan actual del tenant
+model Subscription {
+  id                 String   @id @default(cuid())
+  tenantId           String   @unique
+  plan               String   @default("FREE") // FREE, STARTER, PRO_AI, BUSINESS, ENTERPRISE
+  status             String   @default("active") // active, trialing, past_due, cancelled, expired
+  currentPeriodStart DateTime @default(now())
+  currentPeriodEnd   DateTime
+  cancelledAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([plan])
+  @@index([status])
+}
+
+// UsageEvent — registro de acciones contadas para límites de plan
+model UsageEvent {
+  id         String   @id @default(cuid())
+  tenantId   String
+  eventType  String   // invoice_created, ai_credit_used, woocommerce_order_imported, user_added
+  quantity   Int      @default(1)
+  metadata   Json?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, eventType])
+  @@index([createdAt])
+}
+
+// ─── v1.5: Integrations ───────────────────────────────────────────────────────
+
+// Integration — conexión con plataforma externa (WooCommerce, Shopify, etc.)
+model Integration {
+  id          String    @id @default(cuid())
+  tenantId    String
+  companyId   String?
+  provider    String    // woocommerce, shopify, mercadolibre, stripe
+  status      String    @default("pending") // pending, connected, failed, disconnected, revoked
+  storeUrl    String?
+  country     String?
+  currency    String?
+  settings    Json?
+  webhookUrl  String?
+  lastSyncAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  credential  IntegrationCredential?
+  logs        IntegrationLog[]
+  webhookEvents IntegrationWebhookEvent[]
+
+  @@index([tenantId])
+  @@index([tenantId, provider])
+  @@index([status])
+}
+
+// IntegrationCredential — credenciales cifradas de la integración
+model IntegrationCredential {
+  id                      String   @id @default(cuid())
+  integrationId           String   @unique
+  consumerKeyEncrypted    String?
+  consumerSecretEncrypted String?
+  webhookSecretEncrypted  String?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+}
+
+// IntegrationLog — log de sincronizaciones y eventos
+model IntegrationLog {
+  id            String   @id @default(cuid())
+  integrationId String
+  level         String   @default("info") // info, warning, error, critical
+  event         String
+  message       String
+  metadata      Json?
+  createdAt     DateTime @default(now())
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([integrationId])
+  @@index([level])
+  @@index([createdAt])
+}
+
+// IntegrationWebhookEvent — eventos de webhook recibidos
+model IntegrationWebhookEvent {
+  id            String   @id @default(cuid())
+  integrationId String
+  topic         String   // order.created, order.updated
+  externalId    String
+  payload       Json
+  processed     Boolean  @default(false)
+  processedAt   DateTime?
+  error         String?
+  createdAt     DateTime @default(now())
+
+  integration Integration @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@unique([integrationId, topic, externalId])
+  @@index([integrationId])
+  @@index([processed])
+}
+
+// ExternalReference — evita duplicados al importar de fuentes externas
+model ExternalReference {
+  id           String   @id @default(cuid())
+  tenantId     String
+  provider     String   // woocommerce, shopify
+  externalType String   // order, customer, product
+  externalId   String
+  internalType String   // invoice, customer, transaction
+  internalId   String
+  createdAt    DateTime @default(now())
+
+  @@unique([tenantId, provider, externalType, externalId])
+  @@index([tenantId])
+  @@index([internalId])
+}
+
+// ─── v2: HR / Payroll ─────────────────────────────────────────────────────────
+
+model Employee {
+  id          String   @id @default(cuid())
+  tenantId    String
+  companyId   String?
+  name        String
+  document    String
+  position    String?
+  department  String?
+  email       String?
+  phone       String?
+  salary      Float    @default(0)
+  contractType String? @default("indefinido")
+  status      String   @default("active") // active, inactive
+  startDate   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  payrollItems PayrollItem[]
+  balances     EmployeeBalance[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model PayrollPeriod {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  periodStart DateTime
+  periodEnd   DateTime
+  status      String   @default("draft") // draft, calculated, approved, paid
+  totalGross  Float    @default(0)
+  totalDeductions Float @default(0)
+  totalNet    Float    @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items       PayrollItem[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model PayrollItem {
+  id            String   @id @default(cuid())
+  tenantId      String
+  periodId      String
+  employeeId    String
+  baseSalary    Float    @default(0)
+  earnings      Float    @default(0)
+  deductions    Float    @default(0)
+  netPay        Float    @default(0)
+  paymentStatus String   @default("pending")
+  createdAt     DateTime @default(now())
+
+  period   PayrollPeriod @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([periodId])
+}
+
+model EmployeeBalance {
+  id         String   @id @default(cuid())
+  tenantId   String
+  employeeId String
+  concept    String
+  amount     Float    @default(0)
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([employeeId])
+}
+
+model Vacancy {
+  id           String   @id @default(cuid())
+  tenantId     String
+  title        String
+  department   String?
+  location     String?
+  salaryMin    Float?
+  salaryMax    Float?
+  description  String?
+  requirements String?
+  status       String   @default("open") // open, paused, closed, filled
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  candidates Candidate[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model Candidate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  vacancyId String?
+  name      String
+  email     String?
+  phone     String?
+  stage     String   @default("applied") // applied, review, interview, offer, hired, rejected
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vacancy Vacancy? @relation(fields: [vacancyId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([vacancyId])
+}
+
+// ─── v2: Messages ─────────────────────────────────────────────────────────────
+
+model Message {
+  id          String   @id @default(cuid())
+  tenantId    String
+  channel     String   // whatsapp, email, sms
+  recipient   String
+  recipientName String?
+  subject     String?
+  body        String?
+  status      String   @default("sent") // sent, failed, manual_opened, pending
+  provider    String?
+  providerRef String?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, channel])
+}
+
+model MessageTemplate {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  channel   String   @default("whatsapp")
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ─── v2: Automations ──────────────────────────────────────────────────────────
+
+model Automation {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  trigger     String   // overdue_invoice, low_stock, inactive_customer
+  action      String   // create_alert, send_whatsapp, send_email
+  config      Json     @default("{}")
+  status      String   @default("active") // active, paused
+  lastRunAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  runs AutomationRun[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model AutomationRun {
+  id           String   @id @default(cuid())
+  tenantId     String
+  automationId String
+  status       String   // success, error
+  result       Json     @default("{}")
+  error        String?
+  triggeredBy  String   @default("manual")
+  createdAt    DateTime @default(now())
+
+  automation Automation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+
+  @@index([automationId])
+}
+
+// ─── v2: Imports ──────────────────────────────────────────────────────────────
+
+model ImportJob {
+  id          String   @id @default(cuid())
+  tenantId    String
+  entity      String   // customers, products, suppliers, employees
+  fileName    String
+  totalRows   Int      @default(0)
+  successRows Int      @default(0)
+  failedRows  Int      @default(0)
+  errors      Json     @default("[]")
+  status      String   @default("completed")
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId])
+}
+
+// ─── v2: Tenant Settings ──────────────────────────────────────────────────────
+
+model TenantSettings {
+  id                 String  @id @default(cuid())
+  tenantId           String  @unique
+  logoUrl            String?
+  primaryColor       String?
+  receiptFooter      String?
+  emailEnabled       Boolean @default(false)
+  emailHost          String?
+  emailPort          Int?
+  emailUser          String?
+  emailPassEncrypted String?
+  emailFrom          String?
+  whatsappEnabled    Boolean @default(false)
+  whatsappPhone      String?
+  whatsappTokenEncrypted String?
+  dianEnabled        Boolean @default(false)
+  paymentConfig      Json    @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@index([tenantId])
+}
+
+// ─── v2: Onboarding ───────────────────────────────────────────────────────────
+
+model OnboardingProgress {
+  id             String   @id @default(cuid())
+  tenantId       String   @unique
+  currentStep    String   @default("welcome")
+  completedSteps String[] @default([])
+  status         String   @default("in_progress")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+// ─── v2: App Events ───────────────────────────────────────────────────────────
+
+model AppEvent {
+  id        String   @id @default(cuid())
+  tenantId  String
+  type      String
+  payload   Json     @default("{}")
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([tenantId, type])
+}

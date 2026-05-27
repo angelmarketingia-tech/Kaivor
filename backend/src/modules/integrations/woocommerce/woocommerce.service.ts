@@ -12,12 +12,17 @@ import { normalizeStoreUrl } from './utils/normalize-store-url';
 import { verifyWooCommerceWebhookSignature } from './utils/verify-webhook-signature';
 import * as crypto from 'crypto';
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'admia-v15-default-key-32byteslong!!';
 const ALGO = 'aes-256-cbc';
+
+function getEncryptionKey(): string {
+  const key = process.env.ENCRYPTION_KEY;
+  if (!key) throw new Error('ENCRYPTION_KEY environment variable is required');
+  return key;
+}
 
 function encrypt(text: string): string {
   const iv = crypto.randomBytes(16);
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+  const key = crypto.scryptSync(getEncryptionKey(), 'salt', 32);
   const cipher = crypto.createCipheriv(ALGO, key, iv);
   const encrypted = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
   return `${iv.toString('hex')}:${encrypted.toString('hex')}`;
@@ -25,7 +30,7 @@ function encrypt(text: string): string {
 
 function decrypt(encoded: string): string {
   const [ivHex, encHex] = encoded.split(':');
-  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+  const key = crypto.scryptSync(getEncryptionKey(), 'salt', 32);
   const decipher = crypto.createDecipheriv(ALGO, key, Buffer.from(ivHex, 'hex'));
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(encHex, 'hex')),

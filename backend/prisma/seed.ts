@@ -18,8 +18,11 @@ async function main() {
   });
   console.log(`✅ Tenant: ${tenant.slug}`);
 
-  const adminEmail = 'angelmarketingia@gmail.com';
-  const adminPassword = 'kaivor2026admin';
+  const adminEmail = process.env.SEED_ADMIN_EMAIL;
+  const adminPassword = process.env.SEED_ADMIN_PASSWORD;
+  if (!adminEmail || !adminPassword) {
+    throw new Error('SEED_ADMIN_EMAIL and SEED_ADMIN_PASSWORD must be set to seed the admin user');
+  }
   const hashed = await bcrypt.hash(adminPassword, 10);
 
   const user = await prisma.user.upsert({
@@ -34,7 +37,7 @@ async function main() {
       isActive: true,
     },
   });
-  console.log(`✅ Admin user: ${user.email} / ${adminPassword}`);
+  console.log(`✅ Admin user: ${user.email}`);
 
   // Main company
   const company = await prisma.company.upsert({
@@ -83,9 +86,7 @@ async function main() {
   });
   console.log(`✅ Consumidor Final customer`);
 
-  console.log(`\n🎉 Seed completed. Login:`);
-  console.log(`   Email:    ${adminEmail}`);
-  console.log(`   Password: ${adminPassword}`);
+  console.log(`\n🎉 Seed completed. Login with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD.`);
 }
 
 main()

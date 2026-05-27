@@ -7,7 +7,8 @@ const VERSION = 'kv1';
 function getKey(): Buffer {
   const k = process.env.ENCRYPTION_KEY;
   if (!k) {
-    const seed = process.env.JWT_SECRET || 'admia-dev-fallback-key';
+    const seed = process.env.JWT_SECRET;
+    if (!seed) throw new Error('ENCRYPTION_KEY or JWT_SECRET environment variable is required');
     return crypto.createHash('sha256').update(seed).digest();
   }
   if (/^[A-Za-z0-9+/=]+$/.test(k) && Buffer.from(k, 'base64').length === 32) {

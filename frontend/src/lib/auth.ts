@@ -1,7 +1,11 @@
 import jwt from 'jsonwebtoken';
 import { NextRequest } from 'next/server';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'kaivor-jwt-secret-prod-2026-super-secure-key!';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) throw new Error('JWT_SECRET environment variable is required');
+  return secret;
+}
 
 export interface JwtPayload {
   sub: string;
@@ -11,11 +15,11 @@ export interface JwtPayload {
 }
 
 export function signToken(payload: JwtPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: '24h' });
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  return jwt.verify(token, getJwtSecret()) as JwtPayload;
 }
 
 export function getTokenFromRequest(req: NextRequest): JwtPayload | null {

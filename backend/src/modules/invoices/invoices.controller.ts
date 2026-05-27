@@ -38,10 +38,10 @@ export class InvoicesController {
 
   @Post()
   async create(@Request() req: any, @Body() data: any) {
-    // Inyectar tenantId del JWT, no del body
+    // Inyectar tenantId + userId del JWT, nunca del body
     return this.invoicesService.createInvoice({
       ...data,
-      tenantId: req.user.tenantId,
+      userId: req.user.userId,
     }, req.user.tenantId);
   }
 

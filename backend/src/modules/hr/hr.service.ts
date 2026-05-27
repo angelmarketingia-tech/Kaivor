@@ -45,6 +45,70 @@ export class HrService {
     });
   }
 
+  async getEmployee(tenantId: string, id: string) {
+    const e = await this.prisma.employee.findFirst({ where: { id, tenantId } });
+    if (!e) return null;
+    const recentPayroll = await this.prisma.payrollItem.findMany({
+      where: { tenantId, employeeId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 12,
+      include: { period: { select: { name: true, periodStart: true, periodEnd: true } } },
+    });
+    const balances = await this.prisma.employeeBalance.findMany({ where: { tenantId, employeeId: id }, orderBy: { createdAt: 'desc' } });
+    return { employee: e, payrollHistory: recentPayroll, balances };
+  }
+
+  async updateEmployee(tenantId: string, id: string, data: any) {
+    const existing = await this.prisma.employee.findFirst({ where: { id, tenantId } });
+    if (!existing) return null;
+    const { id: _i, tenantId: _t, createdAt: _c, updatedAt: _u, ...rest } = data;
+    if (rest.salary !== undefined) rest.salary = parseFloat(rest.salary);
+    if (rest.startDate) rest.startDate = new Date(rest.startDate);
+    return this.prisma.employee.update({ where: { id }, data: rest });
+  }
+
+  async deleteEmployee(tenantId: string, id: string) {
+    const existing = await this.prisma.employee.findFirst({ where: { id, tenantId } });
+    if (!existing) return { ok: false };
+    // Soft delete (set inactive)
+    await this.prisma.employee.update({ where: { id }, data: { status: 'inactive' } });
+    return { ok: true };
+  }
+
+  async getPayrollPeriod(tenantId: string, id: string) {
+    const period = await this.prisma.payrollPeriod.findFirst({
+      where: { id, tenantId },
+      include: {
+        items: {
+          include: { employee: { select: { id: true, name: true, document: true, position: true, email: true, phone: true } } },
+        },
+      },
+    });
+    if (!period) return null;
+    return period;
+  }
+
+  async listPayrollReceipts(tenantId: string, periodId: string) {
+    return this.prisma.payrollReceipt.findMany({
+      where: { tenantId, periodId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createPayrollReceipt(tenantId: string, periodId: string, data: any) {
+    return this.prisma.payrollReceipt.create({
+      data: {
+        tenantId,
+        periodId,
+        payrollItemId: data.payrollItemId,
+        employeeId: data.employeeId,
+        pdfUrl: data.pdfUrl,
+        sentEmail: data.sentEmail || false,
+        sentWhatsapp: data.sentWhatsapp || false,
+      },
+    });
+  }
+
   // ── Payroll ──
   listPayroll(tenantId: string) {
     return this.prisma.payrollPeriod.findMany({

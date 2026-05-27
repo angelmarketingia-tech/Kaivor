@@ -673,3 +673,93 @@ model AppEvent {
   @@index([tenantId])
   @@index([tenantId, type])
 }
+
+// ─── v2.1: Suppliers ──────────────────────────────────────────────────────────
+
+model Supplier {
+  id            String   @id @default(cuid())
+  tenantId      String
+  companyId     String?
+  name          String
+  taxId         String?
+  contactName   String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  country       String?
+  category      String?
+  notes         String?
+  status        String   @default("active")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+// ─── v2.1: Customer Notes ─────────────────────────────────────────────────────
+
+model CustomerNote {
+  id         String   @id @default(cuid())
+  tenantId   String
+  customerId String
+  authorId   String?
+  authorName String?
+  content    String
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([customerId])
+}
+
+// ─── v2.1: Support Tickets ────────────────────────────────────────────────────
+
+model SupportTicket {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String?
+  userEmail   String?
+  subject     String
+  description String
+  priority    String   @default("medium")
+  status      String   @default("open")
+  category    String?
+  resolvedAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([status, priority])
+}
+
+// ─── v2.1: Payroll Receipts ───────────────────────────────────────────────────
+
+model PayrollReceipt {
+  id            String   @id @default(cuid())
+  tenantId      String
+  periodId      String
+  payrollItemId String?
+  employeeId    String
+  pdfUrl        String?
+  sentEmail     Boolean  @default(false)
+  sentWhatsapp  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([periodId])
+}
+
+// ─── v2.1: Print Logs ─────────────────────────────────────────────────────────
+
+model PrintLog {
+  id        String   @id @default(cuid())
+  tenantId  String
+  entity    String   // invoice, receipt, etc
+  entityId  String
+  format    String   // pdf, ticket
+  createdAt DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([entity, entityId])
+}

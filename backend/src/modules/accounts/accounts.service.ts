@@ -44,4 +44,23 @@ export class AccountsService {
     if (!company) return { ok: false, error: 'Cuenta no encontrada' };
     return { ok: true, account: { id: company.id, name: company.name } };
   }
+
+  async get(tenantId: string, id: string) {
+    const company = await this.prisma.company.findFirst({ where: { id, tenantId } });
+    if (!company) return null;
+    const [productCount, customerCount, invoiceCount] = await Promise.all([
+      this.prisma.product.count({ where: { tenantId, companyId: id } }),
+      this.prisma.customer.count({ where: { tenantId, companyId: id } }),
+      this.prisma.invoice.count({ where: { tenantId, companyId: id } }),
+    ]);
+    return {
+      id: company.id,
+      name: company.name,
+      taxId: company.taxId,
+      email: company.email,
+      phone: company.phone,
+      address: company.address,
+      stats: { products: productCount, customers: customerCount, invoices: invoiceCount },
+    };
+  }
 }

@@ -31,4 +31,9 @@ export class ProductsController {
   async delete(@Request() req: any, @Param('id') id: string) {
     return this.productsService.deleteProduct(id, req.user.tenantId);
   }
+
+  @Post(':id/adjust-stock')
+  async adjustStock(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.productsService.adjustStock(req.user.tenantId, id, body);
+  }
 }

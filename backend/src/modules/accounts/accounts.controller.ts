@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Request, NotFoundException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AccountsService } from './accounts.service';
 
@@ -10,6 +10,13 @@ export class AccountsController {
   @Get()
   list(@Request() req: any) {
     return this.accounts.list(req.user.tenantId);
+  }
+
+  @Get(':id')
+  async get(@Request() req: any, @Param('id') id: string) {
+    const r = await this.accounts.get(req.user.tenantId, id);
+    if (!r) throw new NotFoundException('Cuenta no encontrada');
+    return r;
   }
 
   @Post()

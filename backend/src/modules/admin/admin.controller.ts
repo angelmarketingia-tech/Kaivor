@@ -1,4 +1,4 @@
-import { Controller, Get, UseGuards, ForbiddenException, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards, ForbiddenException, Request, Param, NotFoundException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AdminService } from './admin.service';
 
@@ -20,6 +20,14 @@ export class AdminController {
 
   @Get('customers')
   customers(@Request() req: any) { this.assertSuperAdmin(req); return this.admin.customers(); }
+
+  @Get('customers/:id')
+  async customerDetail(@Request() req: any, @Param('id') id: string) {
+    this.assertSuperAdmin(req);
+    const r = await this.admin.customerDetail(id);
+    if (!r) throw new NotFoundException('Tenant no encontrado');
+    return r;
+  }
 
   @Get('billing')
   billing(@Request() req: any) { this.assertSuperAdmin(req); return this.admin.billing(); }

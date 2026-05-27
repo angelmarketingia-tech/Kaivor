@@ -62,4 +62,14 @@ export class InvoicesController {
   ) {
     return this.invoicesService.updateDianStatus(id, data.dianStatus, req.user.tenantId, data.dianCude);
   }
+
+  @Post(':id/send-whatsapp')
+  async sendWhatsapp(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.invoicesService.sendWhatsapp(id, req.user.tenantId, body);
+  }
+
+  @Post(':id/print-log')
+  async printLog(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.invoicesService.logPrint(id, req.user.tenantId, body);
+  }
 }

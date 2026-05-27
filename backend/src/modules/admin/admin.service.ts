@@ -89,4 +89,33 @@ export class AdminService {
     const runs = await this.prisma.automationRun.findMany({ orderBy: { createdAt: 'desc' }, take: 50 });
     return { runs };
   }
+
+  async customerDetail(id: string) {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id },
+      include: {
+        users: { select: { id: true, email: true, name: true, role: true, createdAt: true } },
+        companies: true,
+      },
+    });
+    if (!tenant) return null;
+    const sub = await this.prisma.subscription.findUnique({ where: { tenantId: id } });
+    const [invoices, customersCount, productsCount] = await Promise.all([
+      this.prisma.invoice.aggregate({ where: { tenantId: id }, _sum: { total: true }, _count: true }),
+      this.prisma.customer.count({ where: { tenantId: id } }),
+      this.prisma.product.count({ where: { tenantId: id } }),
+    ]);
+    return {
+      tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug, createdAt: tenant.createdAt },
+      users: tenant.users,
+      companies: tenant.companies,
+      subscription: sub,
+      stats: {
+        totalRevenue: invoices._sum.total || 0,
+        invoiceCount: invoices._count,
+        customers: customersCount,
+        products: productsCount,
+      },
+    };
+  }
 }

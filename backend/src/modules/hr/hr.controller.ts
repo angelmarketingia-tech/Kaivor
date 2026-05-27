@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request, NotFoundException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { HrService } from './hr.service';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -23,6 +23,25 @@ export class HrController {
     return this.hr.createEmployee(req.user.tenantId, body);
   }
 
+  @Get('employees/:id')
+  async getEmployee(@Request() req: any, @Param('id') id: string) {
+    const r = await this.hr.getEmployee(req.user.tenantId, id);
+    if (!r) throw new NotFoundException('Empleado no encontrado');
+    return r;
+  }
+
+  @Patch('employees/:id')
+  async updateEmployee(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    const r = await this.hr.updateEmployee(req.user.tenantId, id, body);
+    if (!r) throw new NotFoundException('Empleado no encontrado');
+    return r;
+  }
+
+  @Delete('employees/:id')
+  deleteEmployee(@Request() req: any, @Param('id') id: string) {
+    return this.hr.deleteEmployee(req.user.tenantId, id);
+  }
+
   @Get('payroll')
   listPayroll(@Request() req: any) {
     return this.hr.listPayroll(req.user.tenantId);
@@ -31,6 +50,23 @@ export class HrController {
   @Post('payroll')
   createPayroll(@Request() req: any, @Body() body: any) {
     return this.hr.createPayroll(req.user.tenantId, body);
+  }
+
+  @Get('payroll/:id')
+  async getPayrollPeriod(@Request() req: any, @Param('id') id: string) {
+    const r = await this.hr.getPayrollPeriod(req.user.tenantId, id);
+    if (!r) throw new NotFoundException('Periodo no encontrado');
+    return r;
+  }
+
+  @Get('payroll/:id/receipts')
+  listReceipts(@Request() req: any, @Param('id') id: string) {
+    return this.hr.listPayrollReceipts(req.user.tenantId, id);
+  }
+
+  @Post('payroll/:id/receipts')
+  createReceipt(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.hr.createPayrollReceipt(req.user.tenantId, id, body);
   }
 
   @Get('balances')

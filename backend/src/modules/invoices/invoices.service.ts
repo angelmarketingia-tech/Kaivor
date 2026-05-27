@@ -136,4 +136,42 @@ export class InvoicesService {
       invoicesThisMonth: thisMonth,
     };
   }
+
+  async sendWhatsapp(id: string, tenantId: string, body: any) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id, tenantId }, include: { customer: true } });
+    if (!invoice) throw new NotFoundException('Factura no encontrada');
+    const phone = body.phone || invoice.customer?.phone;
+    if (!phone) return { ok: false, error: 'No hay número de WhatsApp del cliente' };
+    const clean = String(phone).replace(/\D/g, '');
+    const fmt = new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(invoice.total);
+    const text = body.message || `Hola, te enviamos la factura ${invoice.invoiceNumber} por ${fmt}. Gracias por tu compra.`;
+    const link = `https://wa.me/${clean}?text=${encodeURIComponent(text)}`;
+    // Log in messages
+    await this.prisma.message.create({
+      data: {
+        tenantId,
+        channel: 'whatsapp',
+        recipient: clean,
+        recipientName: invoice.customer?.name,
+        body: text,
+        status: 'manual_opened',
+        provider: 'wa.me',
+        providerRef: invoice.id,
+      },
+    }).catch(() => null);
+    return { ok: true, status: 'manual_opened', fallbackLink: link };
+  }
+
+  async logPrint(id: string, tenantId: string, body: any) {
+    const invoice = await this.prisma.invoice.findFirst({ where: { id, tenantId } });
+    if (!invoice) throw new NotFoundException('Factura no encontrada');
+    return this.prisma.printLog.create({
+      data: {
+        tenantId,
+        entity: 'invoice',
+        entityId: id,
+        format: body.format || 'pdf',
+      },
+    });
+  }
 }

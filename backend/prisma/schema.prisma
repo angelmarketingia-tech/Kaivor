@@ -36,8 +36,14 @@ model User {
   email     String
   name      String?
   password  String
-  role      String   @default("cashier") // admin, manager, cashier, accountant, viewer
+  role      String   @default("cashier") // admin, manager, cashier, accountant, viewer, platform_superadmin
   isActive  Boolean  @default(true)
+
+  // MFA / TOTP
+  mfaEnabled     Boolean  @default(false)
+  mfaSecretEnc   String?  // AES-256 encrypted TOTP secret
+  mfaBackupCodes Json?    // Hashed backup codes
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

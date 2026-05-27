@@ -3,9 +3,14 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
+import { initSentry, sentryErrorHandler } from './common/sentry';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const express = require('express');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const cookieParser = require('cookie-parser');
 import type { Express } from 'express';
+
+initSentry();
 
 const server: Express = express();
 let initialized = false;
@@ -23,6 +28,7 @@ export async function getExpressServer(): Promise<Express> {
     .map((s) => s.trim());
 
   app.enableCors({ origin: origins, credentials: true });
+  app.use(cookieParser());
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -34,6 +40,8 @@ export async function getExpressServer(): Promise<Express> {
   );
 
   await app.init();
+  // Sentry error handler must be after all other middleware/init
+  server.use(sentryErrorHandler());
   initialized = true;
   return server;
 }

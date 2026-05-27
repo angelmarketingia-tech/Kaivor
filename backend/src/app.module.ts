@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
+import { AuditInterceptor } from './common/audit.interceptor';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { TenantsModule } from './modules/tenants/tenants.module';
@@ -27,13 +30,19 @@ import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { SupportModule } from './modules/support/support.module';
+import { DianModule } from './modules/dian/dian.module';
 
 @Module({
   imports: [
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: '.env',
-    }),
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
+    ThrottlerModule.forRoot([
+      // Burst: 20 reqs / 10 seconds — basic spam protection
+      { name: 'short', ttl: 10000, limit: 20 },
+      // Medium: 100 reqs / minute — sustained protection
+      { name: 'medium', ttl: 60000, limit: 100 },
+      // Long: 1000 reqs / 15 minutes — abuse protection
+      { name: 'long', ttl: 900000, limit: 1000 },
+    ]),
     PrismaModule,
     HealthModule,
     AuthModule,
@@ -61,6 +70,11 @@ import { SupportModule } from './modules/support/support.module';
     AdminModule,
     SuppliersModule,
     SupportModule,
+    DianModule,
+  ],
+  providers: [
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_INTERCEPTOR, useClass: AuditInterceptor },
   ],
 })
 export class AppModule {}

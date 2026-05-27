@@ -43,7 +43,7 @@ type Message = {
 
 export default function WhatsappAgentPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<'config' | 'conversations'>('conversations');
+  const [tab, setTab] = useState<'playground' | 'conversations' | 'config'>('playground');
   const [config, setConfig] = useState<Config | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -155,7 +155,7 @@ export default function WhatsappAgentPage() {
 
         {/* Tabs */}
         <div className="flex border-b border-slate-200 mb-4">
-          {(['conversations', 'config'] as const).map(t => (
+          {(['playground', 'conversations', 'config'] as const).map(t => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -163,10 +163,14 @@ export default function WhatsappAgentPage() {
                 tab === t ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-500 hover:text-slate-700'
               }`}
             >
-              {t === 'conversations' ? `Conversaciones (${conversations.length})` : 'Configuración'}
+              {t === 'playground' ? '🧪 Playground' : t === 'conversations' ? `Conversaciones (${conversations.length})` : 'Configuración'}
             </button>
           ))}
         </div>
+
+        {tab === 'playground' && (
+          <Playground apiUrl={API!} headers={headers} />
+        )}
 
         {tab === 'config' && config && (
           <ConfigPanel
@@ -475,6 +479,191 @@ function ConfigPanel({ config, webhookUrl, saving, onSave }: {
           <li>Solicitar acceso a WhatsApp Cloud API en Meta Developers</li>
           <li>Pegar las credenciales aquí + configurar webhook en Meta apuntando al URL de arriba</li>
         </ol>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Playground: prueba el agente sin Meta
+// ─────────────────────────────────────────────────────────────────────────────
+
+type PlaygroundMessage = {
+  role: 'user' | 'agent' | 'error';
+  content: string;
+  toolCalls?: { name: string; args: any; result: string }[];
+  at: string;
+};
+
+const SUGGESTIONS = [
+  '¿qué productos tienes en stock?',
+  'busca el café premium',
+  '¿cuál es la dirección de la empresa?',
+  'cuántas unidades hay del SKU FIN-PROD',
+  'quiero comprar 2 unidades de FIN-PROD para entregar',
+];
+
+function Playground({ apiUrl, headers }: { apiUrl: string; headers: Record<string, string> }) {
+  const [input, setInput] = useState('');
+  const [phone, setPhone] = useState('573001234567');
+  const [messages, setMessages] = useState<PlaygroundMessage[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [showTools, setShowTools] = useState(true);
+
+  const send = async (text?: string) => {
+    const msg = (text ?? input).trim();
+    if (!msg || loading) return;
+    setMessages((m) => [...m, { role: 'user', content: msg, at: new Date().toISOString() }]);
+    setInput('');
+    setLoading(true);
+    try {
+      const res = await axios.post(
+        `${apiUrl}/agents/whatsapp/test`,
+        { message: msg, phoneNumber: phone || 'PLAYGROUND' },
+        { headers, timeout: 60000 },
+      );
+      const data = res.data;
+      if (!data.ok) {
+        setMessages((m) => [...m, { role: 'error', content: data.error || 'Error desconocido', at: new Date().toISOString() }]);
+      } else {
+        setMessages((m) => [
+          ...m,
+          { role: 'agent', content: data.answer, toolCalls: data.toolCalls, at: new Date().toISOString() },
+        ]);
+      }
+    } catch (e: any) {
+      const errMsg = e?.response?.data?.error || e?.response?.data?.message || e.message;
+      setMessages((m) => [...m, { role: 'error', content: errMsg, at: new Date().toISOString() }]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const reset = async () => {
+    try {
+      await axios.post(`${apiUrl}/agents/whatsapp/test/reset`, {}, { headers });
+    } catch {}
+    setMessages([]);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Info banner */}
+      <div className="bg-violet-50 border border-violet-200 rounded-xl p-4 text-sm">
+        <p className="font-semibold text-violet-900 mb-1">🧪 Modo prueba (sin Meta)</p>
+        <p className="text-violet-800 text-xs leading-relaxed">
+          Conversa con el agente como si fueras un cliente final por WhatsApp. El agente usa tu catálogo
+          real, tu inventario, tus clientes. No necesitas Meta configurado — solo la <code className="bg-violet-100 px-1 rounded">DEEPSEEK_API_KEY</code> en
+          Vercel. Cuando ya conectes Meta, el agente responderá igual pero por WhatsApp real.
+        </p>
+      </div>
+
+      {/* Chat */}
+      <div className="bg-white rounded-xl border border-slate-200 flex flex-col h-[520px]">
+        <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-3">
+          <div>
+            <p className="text-sm font-semibold text-slate-900">Simulador de cliente</p>
+            <p className="text-xs text-slate-500">Te respondes como si fueras un cliente</p>
+          </div>
+          <div className="ml-auto flex items-center gap-3">
+            <label className="text-xs text-slate-500 flex items-center gap-1">
+              📱 Tel sim:
+              <input
+                type="text"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="border border-slate-200 rounded px-2 py-1 text-xs font-mono w-32"
+              />
+            </label>
+            <label className="text-xs text-slate-500 flex items-center gap-1">
+              <input type="checkbox" checked={showTools} onChange={(e) => setShowTools(e.target.checked)} />
+              ver tools
+            </label>
+            <button onClick={reset} className="text-xs text-slate-500 hover:text-slate-900 underline">
+              Limpiar
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+          {messages.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-sm text-slate-400 mb-4">Escribe algo o usa una sugerencia:</p>
+              <div className="flex flex-wrap gap-2 justify-center max-w-2xl mx-auto">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => send(s)}
+                    className="text-xs bg-white border border-slate-200 rounded-full px-3 py-1.5 hover:border-emerald-400 hover:bg-emerald-50 transition"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            messages.map((m, i) => (
+              <div key={i}>
+                <div className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div
+                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                      m.role === 'user'
+                        ? 'bg-emerald-600 text-white'
+                        : m.role === 'error'
+                        ? 'bg-red-50 text-red-900 border border-red-200'
+                        : 'bg-white text-slate-900 border border-slate-200'
+                    }`}
+                  >
+                    <p className="whitespace-pre-wrap">{m.content}</p>
+                    <p className={`text-[10px] mt-1 ${m.role === 'user' ? 'text-emerald-100' : 'text-slate-400'}`}>
+                      {m.role === 'user' ? '👤 Tú (cliente)' : m.role === 'error' ? '⚠️ Error' : '🤖 Agente'}
+                    </p>
+                  </div>
+                </div>
+                {showTools && m.toolCalls && m.toolCalls.length > 0 && (
+                  <div className="ml-2 mt-1 space-y-1">
+                    {m.toolCalls.map((tc, j) => (
+                      <details key={j} className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-1.5 text-xs">
+                        <summary className="cursor-pointer text-violet-700 font-mono">
+                          🔧 {tc.name}({JSON.stringify(tc.args).slice(0, 80)}{JSON.stringify(tc.args).length > 80 ? '...' : ''})
+                        </summary>
+                        <pre className="text-[10px] text-slate-600 overflow-x-auto mt-1 whitespace-pre-wrap">
+                          {tc.result.length > 500 ? tc.result.slice(0, 500) + '...' : tc.result}
+                        </pre>
+                      </details>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          {loading && (
+            <div className="flex justify-start">
+              <div className="bg-white border border-slate-200 rounded-2xl px-4 py-2.5 text-sm shadow-sm">
+                <span className="inline-block animate-pulse">🤖 Agente pensando…</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="p-3 border-t border-slate-100 flex gap-2">
+          <input
+            type="text"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+            placeholder="Escribe un mensaje como cliente..."
+            disabled={loading}
+            className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm disabled:opacity-50"
+          />
+          <button
+            onClick={() => send()}
+            disabled={loading || !input.trim()}
+            className="bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-40"
+          >
+            Enviar
+          </button>
+        </div>
       </div>
     </div>
   );

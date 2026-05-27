@@ -84,6 +84,121 @@ export class WhatsappAgentService {
     return { ok: true, processed };
   }
 
+  /**
+   * Core LLM + tools loop. Returns the agent's text response.
+   * Reused by webhook (handleIncomingMessage) and playground (testMessage).
+   */
+  private async runAgent(args: {
+    tenantId: string;
+    phoneNumber: string;
+    conversationId: string;
+    userText: string;
+  }): Promise<{ answer: string; toolCallsLog: any[]; error?: string }> {
+    const { tenantId, phoneNumber, conversationId, userText } = args;
+
+    const cfg = await this.prisma.whatsappAgentConfig.findUnique({ where: { tenantId } });
+    if (!cfg) return { answer: '', toolCallsLog: [], error: 'agent_not_configured' };
+
+    const apiKey = process.env.DEEPSEEK_API_KEY;
+    if (!apiKey) {
+      return {
+        answer: '',
+        toolCallsLog: [],
+        error: 'DEEPSEEK_API_KEY no está configurada en el servidor. El admin debe pegarla en las variables de entorno de Vercel.',
+      };
+    }
+
+    // Build conversation history (last 20 messages from this conversation)
+    const history = await this.prisma.whatsappMessage.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+    history.reverse();
+
+    // Resolve linked customer
+    const conversation = await this.prisma.whatsappConversation.findUnique({ where: { id: conversationId } });
+    const linkedCustomer = conversation?.customerId
+      ? await this.prisma.customer.findUnique({ where: { id: conversation.customerId } })
+      : null;
+
+    const systemPrompt =
+      cfg.systemPrompt +
+      `\n\nContexto:\n- Tu nombre: ${cfg.agentName}\n- Número del cliente (E.164): ${phoneNumber}\n` +
+      (linkedCustomer
+        ? `- Cliente identificado: ${linkedCustomer.name} (customerId: ${linkedCustomer.id})`
+        : `- Cliente NO identificado. Usa buscar_cliente_por_telefono al inicio.`) +
+      `\n- Idioma: Español (Colombia). Sé breve, máximo 3 frases por respuesta cuando sea posible.`;
+
+    const client = new OpenAI({ apiKey, baseURL: 'https://api.deepseek.com/v1' });
+
+    const messages: any[] = [
+      { role: 'system', content: systemPrompt },
+      ...history.map((m) => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.content })),
+    ];
+    // Add the new user message if not already the last one in history
+    if (!history.length || history[history.length - 1].content !== userText) {
+      messages.push({ role: 'user', content: userText });
+    }
+
+    const toolCallsLog: any[] = [];
+    const maxTurns = cfg.maxTurns || 8;
+    let finalAnswer = '';
+
+    // Get admin user for tool execution
+    const adminUser = await this.prisma.user.findFirst({
+      where: { tenantId, role: { in: ['admin', 'platform_superadmin'] } },
+      orderBy: { createdAt: 'asc' },
+    });
+    const userId = adminUser?.id || '';
+
+    for (let turn = 0; turn < maxTurns; turn++) {
+      const completion = await client.chat.completions
+        .create({
+          model: cfg.model || 'deepseek-chat',
+          messages,
+          tools: TOOL_DEFINITIONS,
+          tool_choice: 'auto',
+          temperature: cfg.temperature ?? 0.5,
+          max_tokens: 800,
+        })
+        .catch((err) => {
+          this.logger.error('DeepSeek error: ' + err.message);
+          return null;
+        });
+
+      if (!completion) {
+        return { answer: '', toolCallsLog, error: 'No pudimos contactar al modelo DeepSeek. Verifica la API key.' };
+      }
+
+      const msg = completion.choices[0].message;
+      messages.push(msg);
+
+      if (msg.tool_calls && msg.tool_calls.length > 0) {
+        for (const tc of msg.tool_calls as any[]) {
+          if (!tc?.function?.name) continue;
+          const callArgs = JSON.parse(tc.function.arguments || '{}');
+          const result = await executeTool(tc.function.name, callArgs, {
+            prisma: this.prisma,
+            tenantId,
+            userId,
+            phoneNumber,
+            conversationId,
+          });
+          toolCallsLog.push({ name: tc.function.name, args: callArgs, result });
+          messages.push({ role: 'tool', tool_call_id: tc.id, content: result });
+        }
+        continue;
+      }
+
+      finalAnswer = msg.content || 'Gracias por tu mensaje.';
+      break;
+    }
+
+    if (!finalAnswer) finalAnswer = 'Gracias por tu mensaje. ¿Te puedo ayudar con algo más?';
+    return { answer: finalAnswer, toolCallsLog };
+  }
+
   private async handleIncomingMessage(tenantId: string, phoneNumber: string, text: string, metaMessageId?: string) {
     // 1. Get or create conversation
     let conversation = await this.prisma.whatsappConversation.findUnique({
@@ -124,108 +239,14 @@ export class WhatsappAgentService {
       return;
     }
 
-    // 5. Get DeepSeek API key
-    const apiKey = process.env.DEEPSEEK_API_KEY;
-    if (!apiKey) {
-      this.logger.error('DEEPSEEK_API_KEY not configured');
-      return;
-    }
-
-    // 6. Build conversation history (last 20 messages)
-    const history = await this.prisma.whatsappMessage.findMany({
-      where: { conversationId: conversation.id },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
+    // 5. Run agent
+    const { answer: finalAnswer, toolCallsLog } = await this.runAgent({
+      tenantId,
+      phoneNumber,
+      conversationId: conversation.id,
+      userText: text,
     });
-    history.reverse();
-
-    // 7. Resolve linked customer
-    const linkedCustomer = conversation.customerId
-      ? await this.prisma.customer.findUnique({ where: { id: conversation.customerId } })
-      : null;
-
-    // 8. Build system prompt with context
-    const systemPrompt =
-      cfg.systemPrompt +
-      `\n\nContexto:\n- Tu nombre: ${cfg.agentName}\n- Número del cliente (E.164): ${phoneNumber}\n` +
-      (linkedCustomer
-        ? `- Cliente identificado: ${linkedCustomer.name} (customerId: ${linkedCustomer.id})`
-        : `- Cliente NO identificado. Usa buscar_cliente_por_telefono al inicio.`) +
-      `\n- Idioma: Español (Colombia). Sé breve, máximo 3 frases por respuesta cuando sea posible.`;
-
-    // 9. Call DeepSeek with tool calling
-    const client = new OpenAI({
-      apiKey,
-      baseURL: 'https://api.deepseek.com/v1',
-    });
-
-    const messages: any[] = [
-      { role: 'system', content: systemPrompt },
-      ...history.map((m) => ({
-        role: m.role === 'user' ? 'user' : 'assistant',
-        content: m.content,
-      })),
-    ];
-
-    let toolCallsLog: any[] = [];
-    const maxTurns = cfg.maxTurns || 8;
-    let finalAnswer = '';
-
-    for (let turn = 0; turn < maxTurns; turn++) {
-      const completion = await client.chat.completions.create({
-        model: cfg.model || 'deepseek-chat',
-        messages,
-        tools: TOOL_DEFINITIONS,
-        tool_choice: 'auto',
-        temperature: cfg.temperature ?? 0.5,
-        max_tokens: 800,
-      }).catch((err) => {
-        this.logger.error('DeepSeek error: ' + err.message);
-        return null;
-      });
-
-      if (!completion) {
-        finalAnswer = 'Disculpa, tuve un problema técnico. ¿Puedes repetir tu mensaje?';
-        break;
-      }
-
-      const msg = completion.choices[0].message;
-      messages.push(msg);
-
-      if (msg.tool_calls && msg.tool_calls.length > 0) {
-        // Get superadmin user ID for tool execution (system actions)
-        const adminUser = await this.prisma.user.findFirst({
-          where: { tenantId, role: { in: ['admin', 'platform_superadmin'] } },
-          orderBy: { createdAt: 'asc' },
-        });
-        const userId = adminUser?.id || '';
-
-        for (const tc of msg.tool_calls as any[]) {
-          // Type narrow: only function tool calls (skip custom)
-          if (!tc?.function?.name) continue;
-          const args = JSON.parse(tc.function.arguments || '{}');
-          const result = await executeTool(tc.function.name, args, {
-            prisma: this.prisma,
-            tenantId,
-            userId,
-            phoneNumber,
-            conversationId: conversation.id,
-          });
-          toolCallsLog.push({ name: tc.function.name, args, result });
-          messages.push({
-            role: 'tool',
-            tool_call_id: tc.id,
-            content: result,
-          });
-        }
-        continue;
-      }
-
-      finalAnswer = msg.content || 'Gracias por tu mensaje.';
-      break;
-    }
-
-    if (!finalAnswer) finalAnswer = 'Gracias por tu mensaje. ¿Te puedo ayudar con algo más?';
+    if (!finalAnswer) return;
 
     // 10. Send answer back via Meta API
     const sendResult = await this.sendWhatsappMessage(tenantId, phoneNumber, finalAnswer);
@@ -247,6 +268,85 @@ export class WhatsappAgentService {
       where: { tenantId },
       data: { monthlyMessageCount: { increment: 1 }, updatedAt: new Date() },
     });
+  }
+
+  // ── Playground: prueba el agente sin Meta ──
+
+  async testMessage(tenantId: string, userText: string, phoneNumber?: string) {
+    // Use a dedicated "playground" conversation per tenant (phone = "PLAYGROUND")
+    // so it doesn't mix with real conversations.
+    const phone = phoneNumber || 'PLAYGROUND';
+
+    let conversation = await this.prisma.whatsappConversation.findUnique({
+      where: { tenantId_phoneNumber: { tenantId, phoneNumber: phone } },
+    });
+    if (!conversation) {
+      conversation = await this.prisma.whatsappConversation.create({
+        data: { tenantId, phoneNumber: phone, status: 'active' },
+      });
+    }
+
+    // Store user message
+    await this.prisma.whatsappMessage.create({
+      data: { tenantId, conversationId: conversation.id, role: 'user', content: userText, status: 'delivered' },
+    });
+
+    // Make sure DEEPSEEK_API_KEY exists; return clear error otherwise
+    if (!process.env.DEEPSEEK_API_KEY) {
+      return {
+        ok: false,
+        error: 'DEEPSEEK_API_KEY no está configurada en Vercel. Agrégala con: vercel env add DEEPSEEK_API_KEY production',
+        answer: null,
+        toolCalls: [],
+        conversationId: conversation.id,
+      };
+    }
+
+    // Make sure agent config exists (even if not enabled — playground doesn't require enabled)
+    await this.prisma.whatsappAgentConfig.upsert({
+      where: { tenantId },
+      update: {},
+      create: { tenantId },
+    });
+
+    const { answer, toolCallsLog, error } = await this.runAgent({
+      tenantId,
+      phoneNumber: phone,
+      conversationId: conversation.id,
+      userText,
+    });
+
+    if (error) {
+      return { ok: false, error, answer: null, toolCalls: toolCallsLog, conversationId: conversation.id };
+    }
+
+    // Store agent reply
+    await this.prisma.whatsappMessage.create({
+      data: {
+        tenantId,
+        conversationId: conversation.id,
+        role: 'agent',
+        content: answer,
+        status: 'sent',
+        toolCalls: toolCallsLog.length ? (toolCallsLog as any) : undefined,
+      },
+    });
+
+    return { ok: true, answer, toolCalls: toolCallsLog, conversationId: conversation.id };
+  }
+
+  async resetPlayground(tenantId: string) {
+    const conv = await this.prisma.whatsappConversation.findUnique({
+      where: { tenantId_phoneNumber: { tenantId, phoneNumber: 'PLAYGROUND' } },
+    });
+    if (conv) {
+      await this.prisma.whatsappMessage.deleteMany({ where: { conversationId: conv.id } });
+      await this.prisma.whatsappConversation.update({
+        where: { id: conv.id },
+        data: { customerId: null, lastMessageAt: new Date() },
+      });
+    }
+    return { ok: true };
   }
 
   // ── Send message via Meta WhatsApp Cloud API ──

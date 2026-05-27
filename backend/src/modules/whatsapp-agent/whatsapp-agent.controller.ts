@@ -44,6 +44,17 @@ export class WhatsappAgentController {
   sendAsHuman(@Request() req: any, @Param('id') id: string, @Body('content') content: string) {
     return this.agent.sendAsHuman(req.user.tenantId, id, content);
   }
+
+  // ── Playground (sin Meta, para probar) ──
+  @Post('test')
+  testMessage(@Request() req: any, @Body() body: { message: string; phoneNumber?: string }) {
+    return this.agent.testMessage(req.user.tenantId, body.message, body.phoneNumber);
+  }
+
+  @Post('test/reset')
+  resetPlayground(@Request() req: any) {
+    return this.agent.resetPlayground(req.user.tenantId);
+  }
 }
 
 // ── Public webhook (no auth) — verified by Meta verify token ──

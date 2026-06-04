@@ -1,14 +1,17 @@
 import { Controller, Get, Post, Body, Param, UseGuards, ForbiddenException, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { TenantsService } from './tenants.service';
+import { RolesGuard } from '@/common/roles.guard';
+import { Roles } from '@/common/roles.decorator';
 
 @Controller('tenants')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard)
 export class TenantsController {
   constructor(private tenantsService: TenantsService) {}
 
   // Crear tenant — restringido a superadmin platform-level
   @Post()
+  @Roles('platform_superadmin', 'superadmin')
   async create(@Request() req: any, @Body() data: { slug: string; name: string }) {
     if (req.user.role !== 'platform_superadmin' && req.user.role !== 'superadmin') {
       throw new ForbiddenException('Acción restringida a superadmin de plataforma');

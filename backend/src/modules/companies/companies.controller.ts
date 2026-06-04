@@ -12,6 +12,11 @@ export class CompaniesController {
     return this.companiesService.getMyCompany(req.user.tenantId);
   }
 
+  @Get('verticals')
+  listVerticals() {
+    return this.companiesService.listVerticals();
+  }
+
   @Patch('my')
   async updateMyCompany(@Request() req: any, @Body() data: any) {
     return this.companiesService.updateMyCompany(req.user.tenantId, data);

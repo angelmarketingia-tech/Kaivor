@@ -1,9 +1,13 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SuppliersService } from './suppliers.service';
+import { RolesGuard } from '@/common/roles.guard';
+import { Roles } from '@/common/roles.decorator';
+import { PermissionsGuard, RequirePermissions } from '@/common/permissions.guard';
 
 @Controller('suppliers')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+@RequirePermissions('suppliers.view')
 export class SuppliersController {
   constructor(private suppliers: SuppliersService) {}
 
@@ -28,6 +32,7 @@ export class SuppliersController {
   }
 
   @Delete(':id')
+  @Roles('admin', 'manager', 'platform_superadmin', 'superadmin')
   delete(@Request() req: any, @Param('id') id: string) {
     return this.suppliers.delete(req.user.tenantId, id);
   }

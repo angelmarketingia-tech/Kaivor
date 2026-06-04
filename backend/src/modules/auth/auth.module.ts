@@ -14,10 +14,16 @@ import { SubscriptionsModule } from '@/modules/subscriptions/subscriptions.modul
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'your_secret_key'),
-        signOptions: { expiresIn: (configService.get('JWT_EXPIRES_IN') || '86400') as any },
-      }),
+      useFactory: (configService: ConfigService) => {
+        const secret = process.env.JWT_SECRET;
+        if (!secret) {
+          throw new Error('JWT_SECRET is not set — refusing to start with an insecure fallback secret');
+        }
+        return {
+          secret,
+          signOptions: { expiresIn: (configService.get('JWT_EXPIRES_IN') || '86400') as any },
+        };
+      },
     }),
     PrismaModule,
     SubscriptionsModule,

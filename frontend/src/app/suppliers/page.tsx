@@ -60,35 +60,35 @@ export default function SuppliersPage() {
 
   if (loading) return (
     <AppLayout><div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-default border-t-brand rounded-full animate-spin" />
     </div></AppLayout>
   );
 
   return (
     <AppLayout>
-      <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-        {toast && <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
+      <div className="p-4 sm:p-6 max-w-4xl mx-auto app-bg">
+        {toast && <div className="fixed top-4 right-4 z-50 bg-ink-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
 
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Proveedores</h1>
-            <p className="text-sm text-slate-500">{suppliers.length} proveedor(es){totalDue > 0 ? ` · ${fmt(totalDue)} por pagar` : ''}</p>
+            <h1 className="text-2xl font-bold text-default">Proveedores</h1>
+            <p className="text-sm text-soft">{suppliers.length} proveedor(es){totalDue > 0 ? ` · ${fmt(totalDue)} por pagar` : ''}</p>
           </div>
           <button onClick={() => setShowForm(!showForm)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-700">
+            className="bg-ink-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-ink-700">
             {showForm ? 'Cancelar' : '+ Nuevo proveedor'}
           </button>
         </div>
 
         {showForm && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+          <div className="surface rounded-xl border p-5 mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([['name', 'Nombre *'], ['taxId', 'NIT'], ['contactName', 'Contacto'],
                 ['email', 'Email'], ['phone', 'Teléfono'], ['city', 'Ciudad'], ['category', 'Categoría']] as const).map(([k, label]) => (
                 <div key={k}>
-                  <label className="text-xs text-slate-500 block mb-1">{label}</label>
+                  <label className="text-xs text-soft block mb-1">{label}</label>
                   <input type="text" value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    className="w-full surface border rounded-lg px-3 py-2 text-sm text-default" />
                 </div>
               ))}
             </div>
@@ -100,39 +100,39 @@ export default function SuppliersPage() {
         )}
 
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar proveedor…" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4" />
+          placeholder="Buscar proveedor…" className="w-full surface border rounded-lg px-3 py-2 text-sm text-default mb-4" />
 
         {loadError ? (
           <LoadError onRetry={load} />
         ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="surface rounded-xl border overflow-hidden">
           {filtered.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-3xl mb-2 opacity-30">🏭</div>
-              <p className="text-sm text-slate-500">{suppliers.length === 0 ? 'Sin proveedores aún.' : 'Sin resultados.'}</p>
+              <p className="text-sm text-soft">{suppliers.length === 0 ? 'Sin proveedores aún.' : 'Sin resultados.'}</p>
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-100">
+              <thead className="surface-2 border-b border-default">
                 <tr>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase">Proveedor</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase hidden sm:table-cell">Categoría</th>
-                  <th className="text-right px-4 py-2.5 text-xs font-medium text-slate-500 uppercase">Saldo</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-soft uppercase">Proveedor</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-soft uppercase hidden sm:table-cell">Categoría</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-medium text-soft uppercase">Saldo</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-default">
                 {filtered.map(s => (
                   <tr key={s.id} onClick={() => router.push(`/suppliers/${s.id}`)}
-                    className="hover:bg-slate-50 cursor-pointer">
+                    className="hover:bg-black/5 dark:hover:bg-white/5 cursor-pointer">
                     <td className="px-4 py-3">
-                      <p className="text-sm font-medium text-violet-700 hover:underline">{s.name}</p>
-                      {s.phone && <p className="text-xs text-slate-400">{s.phone}</p>}
+                      <p className="text-sm font-medium text-brand hover:underline">{s.name}</p>
+                      {s.phone && <p className="text-xs text-soft">{s.phone}</p>}
                     </td>
-                    <td className="px-4 py-3 text-sm text-slate-600 hidden sm:table-cell">{s.category || '—'}</td>
+                    <td className="px-4 py-3 text-sm text-default hidden sm:table-cell">{s.category || '—'}</td>
                     <td className="px-4 py-3 text-right">
                       {s.outstandingBalance > 0
                         ? <span className="text-sm font-semibold text-amber-600">{fmt(s.outstandingBalance)}</span>
-                        : <span className="text-xs text-slate-400">Al día</span>}
+                        : <span className="text-xs text-soft">Al día</span>}
                     </td>
                   </tr>
                 ))}

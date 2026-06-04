@@ -38,39 +38,39 @@ export default function AdminAutomations() {
   return (
     <AdminShell>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Automatizaciones internas</h1>
-        <p className="text-sm text-slate-500 mb-5">Procesos del equipo Kaivor que escanean todas las empresas de la plataforma.</p>
+        <h1 className="text-2xl font-bold text-default mb-1">Automatizaciones internas</h1>
+        <p className="text-sm text-soft mb-5">Procesos del equipo Kaivor que escanean todas las empresas de la plataforma.</p>
 
         {loading ? (
-          <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-20 bg-white rounded-xl animate-pulse" />)}</div>
+          <div className="space-y-2">{[...Array(4)].map((_, i) => <div key={i} className="h-20 surface rounded-xl animate-pulse" />)}</div>
         ) : failed ? (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
-            <p className="text-sm text-slate-600 mb-3">No pudimos cargar las automatizaciones.</p>
-            <button onClick={load} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">Reintentar</button>
+          <div className="surface rounded-xl border p-8 text-center">
+            <p className="text-sm text-soft mb-3">No pudimos cargar las automatizaciones.</p>
+            <button onClick={load} className="bg-ink-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-ink-700">Reintentar</button>
           </div>
         ) : (
           <div className="space-y-3">
             {automations.map(a => {
               const res = results[a.id];
               return (
-                <div key={a.id} className="bg-white rounded-xl border border-slate-200 p-4">
+                <div key={a.id} className="surface rounded-xl border p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="text-sm font-semibold text-slate-900">{a.name}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{a.desc}</p>
+                      <p className="text-sm font-semibold text-default">{a.name}</p>
+                      <p className="text-xs text-soft mt-0.5">{a.desc}</p>
                     </div>
                     <button onClick={() => run(a.id)} disabled={running === a.id}
-                      className="text-xs bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-violet-700 disabled:opacity-50 shrink-0">
+                      className="text-xs bg-brand text-ink-900 font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-300 disabled:opacity-50 shrink-0">
                       {running === a.id ? 'Ejecutando…' : 'Ejecutar'}
                     </button>
                   </div>
                   {res && (
-                    <div className="mt-3 pt-3 border-t border-slate-100">
-                      <p className="text-xs text-slate-700">{res.summary}</p>
+                    <div className="mt-3 pt-3 border-t border-default">
+                      <p className="text-xs text-default">{res.summary}</p>
                       {res.matches && res.matches.length > 0 && (
                         <div className="mt-2 flex flex-wrap gap-1.5">
                           {res.matches.map((m: any, i: number) => (
-                            <span key={i} className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                            <span key={i} className="text-xs surface-2 text-soft px-2 py-0.5 rounded">
                               {m.label}{m.detail ? ` · ${m.detail}` : ''}
                             </span>
                           ))}
@@ -84,7 +84,7 @@ export default function AdminAutomations() {
           </div>
         )}
 
-        <p className="text-xs text-slate-400 mt-4 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+        <p className="text-xs text-soft mt-4 surface-2 border border-default rounded-lg px-3 py-2">
           Cada ejecución escanea los datos actuales y muestra las empresas que cumplen la condición. La ejecución programada automática se habilitará con Vercel Cron.
         </p>
       </div>

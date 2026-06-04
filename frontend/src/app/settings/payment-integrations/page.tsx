@@ -81,22 +81,22 @@ export default function PaymentIntegrationsPage() {
 
   if (loading) return (
     <AppLayout><div className="flex items-center justify-center h-64">
-      <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+      <div className="w-8 h-8 border-4 border-default border-t-brand rounded-full animate-spin" />
     </div></AppLayout>
   );
 
   return (
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-        {toast && <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
+        {toast && <div className="fixed top-4 right-4 z-50 bg-ink-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
 
         <div className="mb-6">
           <button onClick={() => router.push('/settings/integrations')}
-            className="text-sm text-slate-500 hover:text-slate-900 mb-2 inline-flex items-center gap-1">
+            className="text-sm text-soft hover:text-default mb-2 inline-flex items-center gap-1">
             ← Integraciones
           </button>
-          <h1 className="text-2xl font-bold text-slate-900">Integraciones de pago</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Configura los medios de pago que aceptas en tus facturas.</p>
+          <h1 className="text-2xl font-bold text-default">Integraciones de pago</h1>
+          <p className="text-sm text-soft mt-0.5">Configura los medios de pago que aceptas en tus facturas.</p>
         </div>
 
         <div className="bg-blue-50 border border-blue-100 rounded-lg px-4 py-2.5 mb-4">
@@ -109,19 +109,19 @@ export default function PaymentIntegrationsPage() {
           {providers.map(p => {
             const info = PROVIDER_INFO[p.provider] ?? PROVIDER_INFO.other;
             return (
-              <div key={p.provider} className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col">
+              <div key={p.provider} className="surface rounded-xl border p-4 flex flex-col">
                 <div className="flex items-start justify-between mb-1">
                   <span className="text-2xl">{info.icon}</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full ${
                     p.status === 'active' ? 'bg-emerald-100 text-emerald-700'
-                    : p.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'}`}>
+                    : p.status === 'error' ? 'bg-red-100 text-red-700' : 'surface-2 text-soft'}`}>
                     {p.status === 'active' ? 'Activo' : p.status === 'error' ? 'Error' : 'No configurado'}
                   </span>
                 </div>
-                <p className="text-sm font-semibold text-slate-900">{info.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5 flex-1">{info.desc}</p>
+                <p className="text-sm font-semibold text-default">{info.name}</p>
+                <p className="text-xs text-soft mt-0.5 flex-1">{info.desc}</p>
                 {p.lastTestAt && (
-                  <p className="text-[11px] text-slate-400 mt-1.5">
+                  <p className="text-[11px] text-soft mt-1.5">
                     Última prueba: {new Date(p.lastTestAt).toLocaleString('es-CO', { dateStyle: 'short', timeStyle: 'short' } as any)}
                   </p>
                 )}
@@ -130,15 +130,15 @@ export default function PaymentIntegrationsPage() {
                 )}
                 <div className="flex flex-wrap gap-2 mt-3">
                   <button onClick={() => openEdit(p)}
-                    className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">Configurar</button>
+                    className="text-xs bg-ink-900 text-white px-3 py-1.5 rounded-lg hover:bg-ink-700">Configurar</button>
                   {p.status === 'active' && (
                     <button onClick={() => test(p.provider)} disabled={testing}
-                      className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 disabled:opacity-50">
+                      className="text-xs surface-2 text-default px-3 py-1.5 rounded-lg hover:bg-brand-50 disabled:opacity-50">
                       Probar conexión
                     </button>
                   )}
                   <button onClick={() => openLogs(p.provider)}
-                    className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">
+                    className="text-xs surface-2 text-default px-3 py-1.5 rounded-lg hover:bg-brand-50">
                     Ver logs
                   </button>
                 </div>
@@ -152,24 +152,24 @@ export default function PaymentIntegrationsPage() {
           const info = PROVIDER_INFO[editing.provider] ?? PROVIDER_INFO.other;
           return (
             <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-              <div className="bg-white rounded-xl p-5 max-w-md w-full max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h3 className="text-sm font-semibold text-slate-900 mb-3">{info.icon} {info.name}</h3>
+              <div className="surface rounded-xl p-5 max-w-md w-full max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <h3 className="text-sm font-semibold text-default mb-3">{info.icon} {info.name}</h3>
 
-                <label className="text-xs text-slate-500 block mb-1">Estado</label>
+                <label className="text-xs text-soft block mb-1">Estado</label>
                 <div className="flex gap-2 mb-3">
                   {(['inactive', 'active'] as const).map(st => (
                     <button key={st} onClick={() => setForm((f: any) => ({ ...f, status: st }))}
-                      className={`flex-1 py-1.5 text-xs rounded-lg border ${form.status === st ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600'}`}>
+                      className={`flex-1 py-1.5 text-xs rounded-lg border ${form.status === st ? 'border-ink-900 bg-ink-900 text-white' : 'border-default text-soft'}`}>
                       {st === 'active' ? 'Activo' : 'Inactivo'}
                     </button>
                   ))}
                 </div>
 
-                <label className="text-xs text-slate-500 block mb-1">Ambiente</label>
+                <label className="text-xs text-soft block mb-1">Ambiente</label>
                 <div className="flex gap-2 mb-3">
                   {(['sandbox', 'production'] as const).map(env => (
                     <button key={env} onClick={() => setForm((f: any) => ({ ...f, environment: env }))}
-                      className={`flex-1 py-1.5 text-xs rounded-lg border ${form.environment === env ? 'border-violet-500 bg-violet-50 text-violet-700' : 'border-slate-200 text-slate-600'}`}>
+                      className={`flex-1 py-1.5 text-xs rounded-lg border ${form.environment === env ? 'border-brand bg-brand-50 text-brand' : 'border-default text-soft'}`}>
                       {env === 'sandbox' ? 'Pruebas (sandbox)' : 'Producción'}
                     </button>
                   ))}
@@ -177,29 +177,29 @@ export default function PaymentIntegrationsPage() {
 
                 {info.needsReceiver && (
                   <>
-                    <label className="text-xs text-slate-500 block mb-1">Número / cuenta receptora</label>
+                    <label className="text-xs text-soft block mb-1">Número / cuenta receptora</label>
                     <input type="text" value={form.receiverInfo} onChange={e => setForm((f: any) => ({ ...f, receiverInfo: e.target.value }))}
-                      placeholder="Ej: 3001234567" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
+                      placeholder="Ej: 3001234567" className="w-full surface border rounded-lg px-3 py-2 text-sm mb-3 text-default" />
                   </>
                 )}
                 {info.needsKeys && (
                   <>
-                    <label className="text-xs text-slate-500 block mb-1">Merchant ID</label>
+                    <label className="text-xs text-soft block mb-1">Merchant ID</label>
                     <input type="text" value={form.merchantId} onChange={e => setForm((f: any) => ({ ...f, merchantId: e.target.value }))}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
-                    <label className="text-xs text-slate-500 block mb-1">Llave pública {editing.hasKeys && <span className="text-emerald-600">(guardada)</span>}</label>
+                      className="w-full surface border rounded-lg px-3 py-2 text-sm mb-3 text-default" />
+                    <label className="text-xs text-soft block mb-1">Llave pública {editing.hasKeys && <span className="text-emerald-600">(guardada)</span>}</label>
                     <input type="text" value={form.publicKey} onChange={e => setForm((f: any) => ({ ...f, publicKey: e.target.value }))}
-                      placeholder={editing.hasKeys ? 'Dejar vacío para conservar' : 'pk_...'} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
-                    <label className="text-xs text-slate-500 block mb-1">Llave privada</label>
+                      placeholder={editing.hasKeys ? 'Dejar vacío para conservar' : 'pk_...'} className="w-full surface border rounded-lg px-3 py-2 text-sm mb-3 text-default" />
+                    <label className="text-xs text-soft block mb-1">Llave privada</label>
                     <input type="password" value={form.privateKey} onChange={e => setForm((f: any) => ({ ...f, privateKey: e.target.value }))}
-                      placeholder={editing.hasKeys ? 'Dejar vacío para conservar' : 'sk_...'} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
-                    <p className="text-xs text-slate-400 mb-3">Las llaves se guardan cifradas (AES-256-GCM). Nunca se devuelven al navegador.</p>
+                      placeholder={editing.hasKeys ? 'Dejar vacío para conservar' : 'sk_...'} className="w-full surface border rounded-lg px-3 py-2 text-sm mb-3 text-default" />
+                    <p className="text-xs text-soft mb-3">Las llaves se guardan cifradas (AES-256-GCM). Nunca se devuelven al navegador.</p>
                   </>
                 )}
 
                 <div className="flex gap-2">
                   <button onClick={save} className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">Guardar</button>
-                  <button onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600">Cancelar</button>
+                  <button onClick={() => setEditing(null)} className="px-4 py-2 rounded-lg text-sm border border-default text-soft">Cancelar</button>
                 </div>
               </div>
             </div>
@@ -209,24 +209,24 @@ export default function PaymentIntegrationsPage() {
         {/* Logs modal */}
         {logsFor && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setLogsFor(null)}>
-            <div className="bg-white rounded-xl p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Logs — {logsFor}</h3>
+            <div className="surface rounded-xl p-5 max-w-lg w-full max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-default mb-3">Logs — {logsFor}</h3>
               {logs.length === 0 ? (
-                <p className="text-sm text-slate-400 py-6 text-center">Sin registros para este proveedor.</p>
+                <p className="text-sm text-soft py-6 text-center">Sin registros para este proveedor.</p>
               ) : (
                 <div className="space-y-2">
                   {logs.map((l: any) => (
-                    <div key={l.id} className="border border-slate-100 rounded-lg p-2.5 bg-slate-50">
+                    <div key={l.id} className="border border-default rounded-lg p-2.5 surface-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-slate-700 capitalize">{l.action}</span>
+                        <span className="text-xs font-medium text-default capitalize">{l.action}</span>
                         <span className={`text-xs px-2 py-0.5 rounded-full ${
                           l.status === 'ok' ? 'bg-emerald-100 text-emerald-700'
                           : l.status === 'error' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                           {l.status}
                         </span>
                       </div>
-                      {l.message && <p className="text-xs text-slate-600 mt-1">{l.message}</p>}
-                      <p className="text-[10px] text-slate-400 mt-1">
+                      {l.message && <p className="text-xs text-soft mt-1">{l.message}</p>}
+                      <p className="text-[10px] text-soft mt-1">
                         {new Date(l.createdAt).toLocaleString('es-CO')}{l.environment ? ` · ${l.environment}` : ''}
                       </p>
                     </div>
@@ -234,7 +234,7 @@ export default function PaymentIntegrationsPage() {
                 </div>
               )}
               <button onClick={() => setLogsFor(null)}
-                className="mt-4 w-full border border-slate-200 text-slate-600 py-2 rounded-lg text-sm hover:bg-slate-50">
+                className="mt-4 w-full border border-default text-soft py-2 rounded-lg text-sm hover:bg-brand-50">
                 Cerrar
               </button>
             </div>

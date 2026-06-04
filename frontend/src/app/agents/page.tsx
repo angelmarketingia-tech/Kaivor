@@ -9,7 +9,7 @@ import AppLayout from '@/components/AppLayout';
 const API = process.env.NEXT_PUBLIC_API_URL;
 
 interface Agent { type: string; name: string; icon: string; desc: string; minPlan: string; available: boolean }
-interface Msg { role: 'user' | 'agent'; text: string; suggestions?: { label: string; action: string }[] }
+interface Msg { role: 'user' | 'agent'; text: string; upgrade?: boolean; suggestions?: { label: string; prompt: string }[] }
 
 const STARTERS: Record<string, string[]> = {
   facturacion: ['¿Cómo va mi facturación este mes?', '¿Tengo facturas sin IVA?'],
@@ -30,6 +30,7 @@ export default function AgentsPage() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [asking, setAsking] = useState(false);
+  const [remaining, setRemaining] = useState<number | null>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}` };
@@ -44,18 +45,25 @@ export default function AgentsPage() {
 
   const openAgent = (a: Agent) => {
     setActive(a);
+    setRemaining(null);
     setMessages([{ role: 'agent', text: `Hola, soy el ${a.name}. ${a.desc} ¿En qué te ayudo?` }]);
   };
 
   const ask = async (q?: string) => {
     const question = q ?? input;
-    if (!question.trim() || !active) return;
+    if (!question.trim() || !active || asking) return;
+    // Build conversation history from prior turns (map our roles to the API's roles).
+    const history = messages
+      .filter(m => m.text)
+      .map(m => ({ role: m.role === 'user' ? 'user' : 'assistant', content: m.text }));
     setMessages(m => [...m, { role: 'user', text: question }]);
     setInput('');
     setAsking(true);
     try {
-      const res = await axios.post(`${API}/agents/${active.type}/ask`, { question }, { headers });
-      setMessages(m => [...m, { role: 'agent', text: res.data.answer, suggestions: res.data.suggestions }]);
+      const res = await axios.post(`${API}/agents/${active.type}/ask`, { question, history }, { headers });
+      const d = res.data || {};
+      if (typeof d.remaining === 'number') setRemaining(d.remaining);
+      setMessages(m => [...m, { role: 'agent', text: d.answer || 'No pude procesar tu pregunta.', upgrade: !!d.upgrade, suggestions: d.suggestions }]);
     } catch (err: any) {
       setMessages(m => [...m, { role: 'agent', text: err.response?.data?.message || 'No pude procesar tu pregunta.' }]);
     } finally { setAsking(false); }
@@ -64,7 +72,7 @@ export default function AgentsPage() {
   if (loading) return (
     <AppLayout>
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-default border-t-brand rounded-full animate-spin" />
       </div>
     </AppLayout>
   );
@@ -73,28 +81,28 @@ export default function AgentsPage() {
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Agentes IA</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Asistentes inteligentes que conocen los datos de tu negocio.</p>
+          <h1 className="text-2xl font-bold text-default">Agentes IA</h1>
+          <p className="text-sm text-soft mt-0.5">Asistentes inteligentes que conocen los datos de tu negocio.</p>
         </div>
 
         {!active ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {agents.map(a => (
               <div key={a.type}
-                className={`bg-white rounded-xl border p-4 ${a.available ? 'border-slate-200 hover:border-violet-300 cursor-pointer' : 'border-slate-200 opacity-70'}`}
+                className={`surface rounded-xl border p-4 ${a.available ? 'hover:border-brand cursor-pointer' : 'opacity-70'}`}
                 onClick={() => a.available && openAgent(a)}>
                 <div className="flex items-start justify-between">
                   <span className="text-2xl">{a.icon}</span>
                   {!a.available && (
-                    <span className="text-xs bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full">Plan {a.minPlan}</span>
+                    <span className="text-xs px-2 py-0.5 rounded-full text-ink-900" style={{ backgroundColor: 'rgba(163,204,57,0.18)' }}>Plan {a.minPlan}</span>
                   )}
                 </div>
-                <p className="text-sm font-semibold text-slate-900 mt-2">{a.name}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{a.desc}</p>
+                <p className="text-sm font-semibold text-default mt-2">{a.name}</p>
+                <p className="text-xs text-soft mt-0.5">{a.desc}</p>
                 {a.available ? (
-                  <p className="text-xs text-violet-600 font-medium mt-2">Abrir agente →</p>
+                  <p className="text-xs text-brand font-medium mt-2">Abrir agente →</p>
                 ) : (
-                  <Link href="/pricing" className="text-xs text-violet-600 font-medium mt-2 inline-block" onClick={e => e.stopPropagation()}>
+                  <Link href="/pricing" className="text-xs text-brand font-medium mt-2 inline-block" onClick={e => e.stopPropagation()}>
                     Desbloquear con plan {a.minPlan} →
                   </Link>
                 )}
@@ -102,39 +110,45 @@ export default function AgentsPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col" style={{ height: '70vh' }}>
+          <div className="surface rounded-xl border overflow-hidden flex flex-col" style={{ height: '70vh' }}>
             {/* Chat header */}
-            <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
-              <button onClick={() => setActive(null)} className="text-slate-400 hover:text-slate-700 text-sm">←</button>
+            <div className="px-4 py-3 border-b border-default flex items-center gap-2">
+              <button onClick={() => setActive(null)} className="text-soft hover:text-default text-sm">←</button>
               <span className="text-lg">{active.icon}</span>
-              <span className="text-sm font-semibold text-slate-900">{active.name}</span>
+              <span className="text-sm font-semibold text-default">{active.name}</span>
             </div>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                  <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${m.role === 'user' ? 'bg-ink-900 text-white' : 'surface-2 text-default'}`}>
                     <p className="text-sm whitespace-pre-line">{m.text}</p>
                     {m.suggestions && m.suggestions.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {m.suggestions.map((s, j) => (
-                          <Link key={j} href={s.action}
-                            className="text-xs bg-white text-violet-700 border border-violet-200 px-2.5 py-1 rounded-full hover:bg-violet-50">
+                          <button key={j} onClick={() => ask(s.prompt)}
+                            className="text-xs surface text-brand border px-2.5 py-1 rounded-full hover:border-brand">
                             {s.label} →
-                          </Link>
+                          </button>
                         ))}
                       </div>
+                    )}
+                    {m.upgrade && (
+                      <Link href="/pricing"
+                        className="inline-block text-xs bg-brand text-ink-900 font-semibold px-3 py-1.5 rounded-full mt-2 hover:bg-brand-300">
+                        Mejorar plan →
+                      </Link>
                     )}
                   </div>
                 </div>
               ))}
               {asking && (
                 <div className="flex justify-start">
-                  <div className="bg-slate-100 rounded-2xl px-3.5 py-2.5">
+                  <div className="surface-2 rounded-2xl px-3.5 py-2.5">
                     <div className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
-                      <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" />
+                      <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                      <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                     </div>
                   </div>
                 </div>
@@ -145,20 +159,21 @@ export default function AgentsPage() {
               <div className="px-4 pb-2 flex flex-wrap gap-1.5">
                 {(STARTERS[active.type] || []).map(s => (
                   <button key={s} onClick={() => ask(s)}
-                    className="text-xs bg-violet-50 text-violet-700 border border-violet-100 px-2.5 py-1 rounded-full hover:bg-violet-100">
+                    className="text-xs text-brand border px-2.5 py-1 rounded-full hover:border-brand"
+                    style={{ backgroundColor: 'rgba(163,204,57,0.10)', borderColor: 'rgba(163,204,57,0.22)' }}>
                     {s}
                   </button>
                 ))}
               </div>
             )}
             {/* Input */}
-            <div className="p-3 border-t border-slate-100 flex gap-2">
+            <div className="p-3 border-t border-default flex gap-2">
               <input type="text" value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && ask()}
                 placeholder="Escribe tu pregunta…"
-                className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+                className="flex-1 surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand" />
               <button onClick={() => ask()} disabled={asking || !input.trim()}
-                className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-40">
+                className="bg-brand text-ink-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-brand-300 disabled:opacity-40">
                 Enviar
               </button>
             </div>

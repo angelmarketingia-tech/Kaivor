@@ -10,9 +10,9 @@ const API = process.env.NEXT_PUBLIC_API_URL;
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`;
 
 const ST: Record<string, { l: string; c: string }> = {
-  draft: { l: 'Borrador', c: 'bg-slate-100 text-slate-600' },
+  draft: { l: 'Borrador', c: 'surface-2 text-soft' },
   calculated: { l: 'Calculada', c: 'bg-blue-100 text-blue-700' },
-  approved: { l: 'Aprobada', c: 'bg-violet-100 text-violet-700' },
+  approved: { l: 'Aprobada', c: 'bg-brand-100 text-brand-700' },
   paid: { l: 'Pagada', c: 'bg-emerald-100 text-emerald-700' },
   partially_paid: { l: 'Pago parcial', c: 'bg-amber-100 text-amber-700' },
   cancelled: { l: 'Cancelada', c: 'bg-red-100 text-red-700' },
@@ -66,7 +66,7 @@ export default function PayrollDetailPage() {
   const receiptHtml = (it: any) => {
     const c = data?.company || {};
     const b = data?.branding || {};
-    const color = b.primaryColor || '#7c3aed';
+    const color = b.primaryColor || '#A3CC39';
     const logo = b.logoData && b.showLogoOnPdf
       ? `<img src="${b.logoData}" style="max-height:46px;margin-bottom:6px" />` : '';
     return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Comprobante ${it.employee.firstName}</title>
@@ -124,12 +124,12 @@ export default function PayrollDetailPage() {
   );
   if (error) return (
     <AppLayout><div className="p-6 max-w-md mx-auto mt-16 text-center">
-      <div className="bg-white rounded-xl border border-slate-200 p-8">
+      <div className="surface rounded-xl border p-8">
         <div className="text-4xl mb-3">{error.kind === 'notfound' ? '🔍' : '⚠️'}</div>
-        <h2 className="text-lg font-bold text-slate-900 mb-1">{error.msg}</h2>
+        <h2 className="text-lg font-bold text-default mb-1">{error.msg}</h2>
         <div className="flex gap-2 justify-center mt-4">
-          {error.kind === 'fail' && <button onClick={load} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm">Reintentar</button>}
-          <Link href="/hr/payroll" className="border border-slate-200 px-4 py-2 rounded-lg text-sm">Volver</Link>
+          {error.kind === 'fail' && <button onClick={load} className="bg-ink-900 text-white px-4 py-2 rounded-lg text-sm hover:bg-ink-700">Reintentar</button>}
+          <Link href="/hr/payroll" className="border border-default px-4 py-2 rounded-lg text-sm text-default">Volver</Link>
         </div>
       </div>
     </div></AppLayout>
@@ -145,38 +145,38 @@ export default function PayrollDetailPage() {
   return (
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-        {toast && <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
+        {toast && <div className="fixed top-4 right-4 z-50 bg-ink-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
 
         <div className="flex items-center gap-2 mb-4 text-sm">
-          <Link href="/hr/payroll" className="text-slate-500 hover:text-slate-900">Nómina</Link>
-          <span className="text-slate-300">/</span><span className="text-slate-900 font-medium">{p.name}</span>
+          <Link href="/hr/payroll" className="text-soft hover:text-default">Nómina</Link>
+          <span className="text-soft">/</span><span className="text-default font-medium">{p.name}</span>
         </div>
 
         {/* Header */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <div className="surface rounded-xl border p-5 mb-4">
           <div className="flex items-start justify-between">
             <div>
-              <h1 className="text-xl font-bold text-slate-900">{p.name}</h1>
+              <h1 className="text-xl font-bold text-default">{p.name}</h1>
               <span className={`text-xs px-2 py-0.5 rounded-full ${st.c} inline-block mt-1`}>{st.l}</span>
             </div>
             <div className="text-right">
-              <p className="text-xs text-slate-400">Neto a pagar</p>
-              <p className="text-2xl font-bold text-slate-900">{fmt(p.totalNet)}</p>
+              <p className="text-xs text-soft">Neto a pagar</p>
+              <p className="text-2xl font-bold text-default">{fmt(p.totalNet)}</p>
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3 mt-4 text-sm">
-            <div><p className="text-xs text-slate-400">Bruto</p><p className="font-medium">{fmt(p.totalGross)}</p></div>
-            <div><p className="text-xs text-slate-400">Deducciones</p><p className="font-medium">{fmt(p.totalDeductions)}</p></div>
-            <div><p className="text-xs text-slate-400">Empleados</p><p className="font-medium">{data.items.length}</p></div>
+            <div><p className="text-xs text-soft">Bruto</p><p className="font-medium text-default">{fmt(p.totalGross)}</p></div>
+            <div><p className="text-xs text-soft">Deducciones</p><p className="font-medium text-default">{fmt(p.totalDeductions)}</p></div>
+            <div><p className="text-xs text-soft">Empleados</p><p className="font-medium text-default">{data.items.length}</p></div>
           </div>
           {/* Actions */}
           {!locked && (
-            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+            <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-default">
               <button onClick={() => act({ action: 'calculate' }, 'Nómina calculada')} disabled={busy}
                 className="text-xs bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 disabled:opacity-50">Calcular</button>
               {p.status === 'calculated' && (
                 <button onClick={() => act({ action: 'approve' }, 'Nómina aprobada')} disabled={busy}
-                  className="text-xs bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-violet-700 disabled:opacity-50">Aprobar</button>
+                  className="text-xs bg-brand text-ink-900 font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-300 disabled:opacity-50">Aprobar</button>
               )}
               {(p.status === 'approved' || p.status === 'partially_paid') && (
                 <button onClick={() => act({ action: 'mark-paid' }, 'Nómina marcada como pagada')} disabled={busy}
@@ -190,36 +190,36 @@ export default function PayrollDetailPage() {
 
         {/* Add employee */}
         {!locked && available.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 p-3 mb-4 flex items-center gap-2">
-            <select id="addEmp" className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm">
+          <div className="surface rounded-xl border p-3 mb-4 flex items-center gap-2">
+            <select id="addEmp" className="flex-1 border border-default rounded-lg px-3 py-2 text-sm bg-transparent text-default">
               <option value="">Agregar empleado al periodo…</option>
               {available.map(e => <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>)}
             </select>
             <button onClick={() => {
               const sel = (document.getElementById('addEmp') as HTMLSelectElement).value;
               if (sel) act({ action: 'add-employee', employeeId: sel }, 'Empleado agregado');
-            }} disabled={busy} className="bg-slate-900 text-white px-3 py-2 rounded-lg text-sm hover:bg-slate-700">Agregar</button>
+            }} disabled={busy} className="bg-ink-900 text-white px-3 py-2 rounded-lg text-sm hover:bg-ink-700">Agregar</button>
           </div>
         )}
 
         {/* Items */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="surface rounded-xl border overflow-hidden">
           {data.items.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-slate-400">Sin empleados en este periodo.</p>
+            <p className="px-5 py-8 text-center text-sm text-soft">Sin empleados en este periodo.</p>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-default">
               {data.items.map((it: any) => (
                 <div key={it.id} className="px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{it.employee.firstName} {it.employee.lastName}</p>
-                      <p className="text-xs text-slate-400">Base {fmt(it.baseSalary)} · +{fmt(it.earnings)} · -{fmt(it.deductions)}</p>
+                      <p className="text-sm font-medium text-default">{it.employee.firstName} {it.employee.lastName}</p>
+                      <p className="text-xs text-soft">Base {fmt(it.baseSalary)} · +{fmt(it.earnings)} · -{fmt(it.deductions)}</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-slate-900">{fmt(it.netPay)}</span>
-                      <button onClick={() => setReceiptItem(it)} className="text-xs text-slate-600 hover:underline">Comprobante</button>
+                      <span className="text-sm font-bold text-default">{fmt(it.netPay)}</span>
+                      <button onClick={() => setReceiptItem(it)} className="text-xs text-soft hover:underline">Comprobante</button>
                       {!locked && (
-                        <button onClick={() => setEditItem({ ...it })} className="text-xs text-violet-600 hover:underline">Editar</button>
+                        <button onClick={() => setEditItem({ ...it })} className="text-xs text-brand hover:underline">Editar</button>
                       )}
                     </div>
                   </div>
@@ -232,14 +232,14 @@ export default function PayrollDetailPage() {
         {/* Edit item modal */}
         {editItem && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditItem(null)}>
-            <div className="bg-white rounded-xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">{editItem.employee.firstName} {editItem.employee.lastName}</h3>
-              <label className="text-xs text-slate-500 block mb-1">Bonificaciones / extras</label>
+            <div className="surface rounded-xl border p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-default mb-3">{editItem.employee.firstName} {editItem.employee.lastName}</h3>
+              <label className="text-xs text-soft block mb-1">Bonificaciones / extras</label>
               <input type="number" value={editItem.earnings} onChange={e => setEditItem({ ...editItem, earnings: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
-              <label className="text-xs text-slate-500 block mb-1">Deducciones</label>
+                className="w-full border border-default rounded-lg px-3 py-2 text-sm mb-3 bg-transparent text-default" />
+              <label className="text-xs text-soft block mb-1">Deducciones</label>
               <input type="number" value={editItem.deductions} onChange={e => setEditItem({ ...editItem, deductions: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4" />
+                className="w-full border border-default rounded-lg px-3 py-2 text-sm mb-4 bg-transparent text-default" />
               <div className="flex gap-2">
                 <button onClick={async () => {
                   await act({ action: 'update-item', itemId: editItem.id, earnings: editItem.earnings, deductions: editItem.deductions }, 'Ítem actualizado');
@@ -247,7 +247,7 @@ export default function PayrollDetailPage() {
                 }} className="flex-1 bg-emerald-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-emerald-700">Guardar</button>
                 <button onClick={async () => { await act({ action: 'remove-item', itemId: editItem.id }, 'Empleado removido'); setEditItem(null); }}
                   className="px-3 py-2 rounded-lg text-sm bg-red-50 text-red-600 hover:bg-red-100">Quitar</button>
-                <button onClick={() => setEditItem(null)} className="px-3 py-2 rounded-lg text-sm border border-slate-200">Cancelar</button>
+                <button onClick={() => setEditItem(null)} className="px-3 py-2 rounded-lg text-sm border border-default text-default">Cancelar</button>
               </div>
             </div>
           </div>
@@ -256,24 +256,24 @@ export default function PayrollDetailPage() {
         {/* Receipt modal */}
         {receiptItem && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setReceiptItem(null)}>
-            <div className="bg-white rounded-xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
-              <h3 className="text-sm font-semibold text-slate-900">Comprobante de nómina</h3>
-              <p className="text-xs text-slate-500 mt-0.5 mb-1">
+            <div className="surface rounded-xl border p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-default">Comprobante de nómina</h3>
+              <p className="text-xs text-soft mt-0.5 mb-1">
                 {receiptItem.employee.firstName} {receiptItem.employee.lastName} · {data.period.name}
               </p>
-              <div className="bg-slate-50 rounded-lg p-3 my-3 text-sm">
-                <div className="flex justify-between"><span className="text-slate-500">Salario base</span><span>{fmt(receiptItem.baseSalary)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Ingresos</span><span className="text-emerald-600">+{fmt(receiptItem.earnings)}</span></div>
-                <div className="flex justify-between"><span className="text-slate-500">Deducciones</span><span className="text-red-600">-{fmt(receiptItem.deductions)}</span></div>
-                <div className="flex justify-between font-bold border-t border-slate-200 mt-1 pt-1"><span>Neto</span><span>{fmt(receiptItem.netPay)}</span></div>
+              <div className="surface-2 rounded-lg p-3 my-3 text-sm">
+                <div className="flex justify-between"><span className="text-soft">Salario base</span><span className="text-default">{fmt(receiptItem.baseSalary)}</span></div>
+                <div className="flex justify-between"><span className="text-soft">Ingresos</span><span className="text-emerald-600">+{fmt(receiptItem.earnings)}</span></div>
+                <div className="flex justify-between"><span className="text-soft">Deducciones</span><span className="text-red-600">-{fmt(receiptItem.deductions)}</span></div>
+                <div className="flex justify-between font-bold border-t border-default mt-1 pt-1 text-default"><span>Neto</span><span>{fmt(receiptItem.netPay)}</span></div>
               </div>
               <div className="space-y-2">
                 <button onClick={() => printReceipt(receiptItem)}
-                  className="w-full bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-700">
+                  className="w-full bg-ink-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-ink-700">
                   🖨 Imprimir / descargar PDF
                 </button>
                 <button onClick={() => sendReceipt(receiptItem, 'email')} disabled={sending}
-                  className="w-full bg-slate-100 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-200 disabled:opacity-50">
+                  className="w-full surface-2 text-default py-2 rounded-lg text-sm font-medium hover-surface-2 disabled:opacity-50">
                   ✉ Enviar por email
                 </button>
                 <button onClick={() => sendReceipt(receiptItem, 'whatsapp')} disabled={sending}
@@ -281,7 +281,7 @@ export default function PayrollDetailPage() {
                   💬 Enviar por WhatsApp
                 </button>
                 <button onClick={() => setReceiptItem(null)}
-                  className="w-full border border-slate-200 text-slate-600 py-2 rounded-lg text-sm hover:bg-slate-50">
+                  className="w-full border border-default text-soft py-2 rounded-lg text-sm hover-surface-2">
                   Cerrar
                 </button>
               </div>
@@ -289,7 +289,7 @@ export default function PayrollDetailPage() {
           </div>
         )}
 
-        <p className="text-xs text-slate-400 mt-3 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+        <p className="text-xs text-soft mt-3 surface-2 border border-default rounded-lg px-3 py-2">
           Esta es una gestión operativa de nómina. No reemplaza el cálculo legal de aportes y prestaciones de tu contador.
         </p>
       </div>

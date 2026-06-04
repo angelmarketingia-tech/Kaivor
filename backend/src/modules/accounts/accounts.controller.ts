@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Body, Param, UseGuards, Request, NotFoundException } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AccountsService } from './accounts.service';
+import { PermissionsGuard, RequirePermissions } from '@/common/permissions.guard';
 
 @Controller('accounts')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@RequirePermissions('accounts.view')
 export class AccountsController {
   constructor(private accounts: AccountsService) {}
 

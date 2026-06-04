@@ -41,13 +41,13 @@ export default function HrHubPage() {
   if (locked) return (
     <AppLayout>
       <div className="p-6 max-w-md mx-auto mt-16 text-center">
-        <div className="bg-white rounded-xl border border-violet-200 p-8">
+        <div className="surface rounded-xl border p-8">
           <div className="text-4xl mb-3">🏢</div>
-          <h2 className="text-lg font-bold text-slate-900 mb-1">Recursos Humanos</h2>
-          <p className="text-sm text-slate-500 mb-5">
+          <h2 className="text-lg font-bold text-default mb-1">Recursos Humanos</h2>
+          <p className="text-sm text-soft mb-5">
             El módulo de RRHH, nómina y vacantes está disponible en los planes Business y Enterprise.
           </p>
-          <Link href="/pricing" className="inline-block bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-violet-700">
+          <Link href="/pricing" className="inline-block bg-brand text-ink-900 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-300">
             Ver planes →
           </Link>
         </div>
@@ -58,26 +58,26 @@ export default function HrHubPage() {
   return (
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-slate-900 mb-1">Recursos Humanos</h1>
-        <p className="text-sm text-slate-500 mb-6">Gestiona tu equipo, nómina y procesos de selección.</p>
+        <h1 className="text-2xl font-bold text-default mb-1">Recursos Humanos</h1>
+        <p className="text-sm text-soft mb-6">Gestiona tu equipo, nómina y procesos de selección.</p>
 
         {data && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500 uppercase">Empleados</p>
-              <p className="text-xl font-bold text-slate-900">{data.employees.active}<span className="text-sm text-slate-400">/{data.employees.total}</span></p>
+            <div className="surface rounded-xl border p-4">
+              <p className="text-xs text-soft uppercase">Empleados</p>
+              <p className="text-xl font-bold text-default">{data.employees.active}<span className="text-sm text-soft">/{data.employees.total}</span></p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500 uppercase">Nómina pendiente</p>
+            <div className="surface rounded-xl border p-4">
+              <p className="text-xs text-soft uppercase">Nómina pendiente</p>
               <p className="text-xl font-bold text-amber-600">{fmt(data.payroll.pendingAmount)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500 uppercase">Saldos pendientes</p>
-              <p className="text-xl font-bold text-slate-900">{fmt(data.balances.pendingAmount)}</p>
+            <div className="surface rounded-xl border p-4">
+              <p className="text-xs text-soft uppercase">Saldos pendientes</p>
+              <p className="text-xl font-bold text-default">{fmt(data.balances.pendingAmount)}</p>
             </div>
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
-              <p className="text-xs text-slate-500 uppercase">Vacantes abiertas</p>
-              <p className="text-xl font-bold text-slate-900">{data.vacancies.open}</p>
+            <div className="surface rounded-xl border p-4">
+              <p className="text-xs text-soft uppercase">Vacantes abiertas</p>
+              <p className="text-xl font-bold text-default">{data.vacancies.open}</p>
             </div>
           </div>
         )}
@@ -85,11 +85,11 @@ export default function HrHubPage() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {SECTIONS.map(s => (
             <Link key={s.href} href={s.href}
-              className="bg-white rounded-xl border border-slate-200 p-5 hover:border-violet-300 transition-colors flex items-start gap-3">
+              className="surface rounded-xl border p-5 hover:border-brand transition-colors flex items-start gap-3">
               <span className="text-2xl">{s.icon}</span>
               <div>
-                <p className="text-sm font-semibold text-slate-900">{s.title}</p>
-                <p className="text-xs text-slate-500 mt-0.5">{s.desc}</p>
+                <p className="text-sm font-semibold text-default">{s.title}</p>
+                <p className="text-xs text-soft mt-0.5">{s.desc}</p>
               </div>
             </Link>
           ))}

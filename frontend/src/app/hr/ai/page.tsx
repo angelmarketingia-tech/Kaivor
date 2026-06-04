@@ -55,11 +55,11 @@ export default function HrAiPage() {
 
   if (locked) return (
     <AppLayout><div className="p-6 max-w-md mx-auto mt-16 text-center">
-      <div className="bg-white rounded-xl border border-violet-200 p-8">
+      <div className="surface rounded-xl border p-8">
         <div className="text-4xl mb-3">✦</div>
-        <h2 className="text-lg font-bold text-slate-900 mb-1">Kairos HR AI</h2>
-        <p className="text-sm text-slate-500 mb-5">El asistente de RRHH está disponible en planes Business y Enterprise.</p>
-        <Link href="/pricing" className="inline-block bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium">Ver planes →</Link>
+        <h2 className="text-lg font-bold text-default mb-1">Kairos HR AI</h2>
+        <p className="text-sm text-soft mb-5">El asistente de RRHH está disponible en planes Business y Enterprise.</p>
+        <Link href="/pricing" className="inline-block bg-brand text-ink-900 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-300">Ver planes →</Link>
       </div>
     </div></AppLayout>
   );
@@ -73,26 +73,26 @@ export default function HrAiPage() {
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-2xl mx-auto">
         <div className="flex items-center gap-2 mb-4 text-sm">
-          <Link href="/hr" className="text-slate-500 hover:text-slate-900">RRHH</Link>
-          <span className="text-slate-300">/</span><span className="text-slate-900 font-medium">Kairos HR AI</span>
+          <Link href="/hr" className="text-soft hover:text-default">RRHH</Link>
+          <span className="text-soft">/</span><span className="text-default font-medium">Kairos HR AI</span>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col" style={{ height: '72vh' }}>
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2">
+        <div className="surface rounded-xl border overflow-hidden flex flex-col" style={{ height: '72vh' }}>
+          <div className="px-4 py-3 border-b border-default flex items-center gap-2">
             <span className="text-lg">✦</span>
-            <span className="text-sm font-semibold text-slate-900">Kairos HR AI</span>
+            <span className="text-sm font-semibold text-default">Kairos HR AI</span>
           </div>
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             {messages.map((m, i) => (
               <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${m.role === 'user' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                <div className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 ${m.role === 'user' ? 'bg-ink-900 text-white' : 'surface-2 text-default'}`}>
                   <p className="text-sm whitespace-pre-line">{m.text}</p>
                 </div>
               </div>
             ))}
             {asking && (
               <div className="flex justify-start">
-                <div className="bg-slate-100 rounded-2xl px-3.5 py-2.5 flex gap-1">
+                <div className="surface-2 rounded-2xl px-3.5 py-2.5 flex gap-1">
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" />
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
                   <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
@@ -104,19 +104,20 @@ export default function HrAiPage() {
             <div className="px-4 pb-2 flex flex-wrap gap-1.5">
               {STARTERS.map(s => (
                 <button key={s} onClick={() => ask(s)}
-                  className="text-xs bg-violet-50 text-violet-700 border border-violet-100 px-2.5 py-1 rounded-full hover:bg-violet-100">
+                  className="text-xs text-brand border px-2.5 py-1 rounded-full transition-colors"
+                  style={{ backgroundColor: 'rgba(163,204,57,0.10)', borderColor: 'rgba(163,204,57,0.22)' }}>
                   {s}
                 </button>
               ))}
             </div>
           )}
-          <div className="p-3 border-t border-slate-100 flex gap-2">
+          <div className="p-3 border-t border-default flex gap-2">
             <input type="text" value={input} onChange={e => setInput(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && ask()}
               placeholder="Pregunta sobre tu equipo…"
-              className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              className="flex-1 border border-default rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
             <button onClick={() => ask()} disabled={asking || !input.trim()}
-              className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-40">
+              className="bg-brand text-ink-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-brand-300 disabled:opacity-40">
               Enviar
             </button>
           </div>

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Request, Headers, Req } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Throttle } from '@nestjs/throttler';
 import { WhatsappAgentService } from './whatsapp-agent.service';
@@ -55,6 +55,12 @@ export class WhatsappAgentController {
   resetPlayground(@Request() req: any) {
     return this.agent.resetPlayground(req.user.tenantId);
   }
+
+  // ── Validate Meta credentials (ping Graph API) ──
+  @Post('validate')
+  validate(@Request() req: any) {
+    return this.agent.validateMetaCredentials(req.user.tenantId);
+  }
 }
 
 // ── Public webhook (no auth) — verified by Meta verify token ──
@@ -76,9 +82,16 @@ export class WhatsappWebhookController {
     return result;  // Meta expects the challenge plain
   }
 
-  // Incoming message event
+  // Incoming message event — verifies X-Hub-Signature-256 HMAC if app secret is configured
+  @Throttle({ short: { limit: 120, ttl: 60000 } })
   @Post(':tenantId')
-  async receive(@Param('tenantId') tenantId: string, @Body() body: any) {
-    return this.agent.ingestWebhook(tenantId, body);
+  async receive(
+    @Param('tenantId') tenantId: string,
+    @Headers('x-hub-signature-256') signature: string | undefined,
+    @Req() req: any,
+    @Body() body: any,
+  ) {
+    const rawBody: Buffer | undefined = req.rawBody;
+    return this.agent.ingestWebhook(tenantId, body, rawBody, signature);
   }
 }

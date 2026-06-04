@@ -33,16 +33,25 @@ model Tenant {
 model User {
   id        String   @id @default(cuid())
   tenantId  String
-  email     String
+  email     String?  // opcional: cajeros/asistentes pueden entrar con username sin correo
+  username  String?  // login simple por negocio (ej. "cajera1"), alternativa al correo
   name      String?
   password  String
-  role      String   @default("cashier") // admin, manager, cashier, accountant, viewer, platform_superadmin
+  role      String   @default("cashier") // admin, manager, cashier, assistant, accountant, viewer, platform_superadmin
   isActive  Boolean  @default(true)
+
+  // Permisos granulares (overrides sobre los defaults del rol). { [permKey]: boolean }
+  // Si null/ausente, se usan los defaults del rol. Lo define el admin del negocio.
+  permissions Json?
 
   // MFA / TOTP
   mfaEnabled     Boolean  @default(false)
   mfaSecretEnc   String?  // AES-256 encrypted TOTP secret
   mfaBackupCodes Json?    // Hashed backup codes
+
+  // Password reset
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -54,8 +63,10 @@ model User {
   auditLogs     AuditLog[]
 
   @@unique([tenantId, email])
+  @@unique([tenantId, username])
   @@index([tenantId])
   @@index([email])
+  @@index([username])
 }
 
 // Companies
@@ -67,6 +78,8 @@ model Company {
   address   String?
   phone     String?
   email     String?
+  businessType String? @default("generic") // generic, retail, services, barbershop, restaurant, beauty, health, automotive, education, professional
+  businessConfig Json?  // vertical-specific settings (default tip %, table count, service-charge %, units, etc.)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -89,9 +102,13 @@ model Product {
   sku       String
   name      String
   category  String?
+  type      String?  @default("product") // product | service | package
   price     Float
   cost      Float?
-  unit      String?  @default("u")
+  unit      String?  @default("u")        // u, hora, kg, l, sesion, etc.
+  durationMin Int?                          // for services: default duration in minutes
+  imageUrl  String?                         // foto del producto (POS táctil)
+  color     String?                         // color del tile en el POS si no hay foto
   barcode   String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
@@ -158,6 +175,8 @@ model Customer {
   taxId     String?
   address   String?
   city      String?
+  vip       Boolean  @default(false)
+  status    String   @default("active")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -176,7 +195,7 @@ model Transaction {
   id            String   @id @default(cuid())
   tenantId      String
   companyId     String
-  userId        String
+  userId        String?  // opcional: ventas de mesa/POS pueden no tener cajero JWT directo
   customerId    String?
   type          String   @default("sale") // sale, purchase, adjustment
   reference     String?
@@ -189,7 +208,7 @@ model Transaction {
   updatedAt     DateTime @updatedAt
 
   // Relations
-  user       User      @relation(fields: [userId], references: [id])
+  user       User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
   company    Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
   customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   items      TransactionItem[]
@@ -202,23 +221,37 @@ model Transaction {
   @@index([status])
 }
 
+// Secuencias atómicas por tenant (ej: numeración de facturas) — evita colisiones bajo concurrencia.
+model Counter {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String   // ej: "invoice"
+  value     Int      @default(0)
+  updatedAt DateTime @updatedAt
+
+  @@unique([tenantId, name])
+}
+
 // Transaction Items
 model TransactionItem {
   id            String   @id @default(cuid())
   tenantId      String
   transactionId String
-  productId     String
+  productId     String?  // null para ítems personalizados (texto libre, servicios sin catálogo)
+  description   String?
   quantity      Float
   unitPrice     Float
   discountPercent Float @default(0)
+  discountType  String  @default("percent") // percent | fixed
   taxPercent    Float   @default(0)
   lineTotal     Float
 
   // Relations
   transaction Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-  product     Product @relation(fields: [productId], references: [id])
+  product     Product? @relation(fields: [productId], references: [id])
 
   @@index([tenantId])
+  @@index([tenantId, productId])
   @@index([transactionId])
 }
 
@@ -233,11 +266,16 @@ model Invoice {
   invoiceNumber   String
   invoiceDate     DateTime
   dueDate         DateTime?
-  status          String   @default("draft") // draft, sent, accepted, rejected, cancelled
+  status          String   @default("draft") // draft, sent, accepted, rejected, cancelled, pending_validation
+  paymentMethod   String?  // cash, nequi, daviplata, debit_card, credit_card, qr, bank_transfer, addi, credit_validation
   subtotal        Float
   taxAmount       Float    @default(0)
   discountAmount  Float    @default(0)
+  tipAmount       Float    @default(0)  // propina (servicios/restaurante/barbería)
+  serviceCharge   Float    @default(0)  // cargo por servicio (restaurante/hospitalidad)
   total           Float
+  tableNumber     String?  // mesa (restaurante)
+  professional    String?  // estilista/profesional que atendió (barbería/salón/salud)
   notes           String?
 
   // DIAN Fields
@@ -274,6 +312,8 @@ model Payment {
   amount    Float
   method    String   // cash, card, bank_transfer, wallet
   reference String?
+  cashReceived Float?
+  changeGiven  Float?
   paidAt    DateTime
   createdAt DateTime @default(now())
 
@@ -571,6 +611,7 @@ model MessageTemplate {
   tenantId  String
   name      String
   channel   String   @default("whatsapp")
+  subject   String?
   body      String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -700,7 +741,29 @@ model Supplier {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
+  balances      SupplierBalance[]
+
   @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+// ─── Supplier balances (cuentas por pagar a proveedores) ──────────────────────
+model SupplierBalance {
+  id          String    @id @default(cuid())
+  tenantId    String
+  supplierId  String
+  description String
+  amount      Float
+  dueDate     DateTime?
+  status      String    @default("pending") // pending, paid, cancelled
+  paidAt      DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  supplier    Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([supplierId])
   @@index([tenantId, status])
 }
 
@@ -726,14 +789,16 @@ model SupportTicket {
   tenantId    String
   userId      String?
   userEmail   String?
-  subject     String
-  description String
-  priority    String   @default("medium")
-  status      String   @default("open")
-  category    String?
-  resolvedAt  DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  subject      String
+  description  String
+  priority     String   @default("medium")
+  status       String   @default("open")
+  category     String?
+  reporterName String?
+  response     String?
+  resolvedAt   DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([tenantId])
   @@index([status, priority])
@@ -764,6 +829,7 @@ model PrintLog {
   entity    String   // invoice, receipt, etc
   entityId  String
   format    String   // pdf, ticket
+  paperSize String?  // 58mm, 80mm, A4
   createdAt DateTime @default(now())
 
   @@index([tenantId])
@@ -790,6 +856,10 @@ model WhatsappAgentConfig {
   model           String   @default("deepseek-chat")
   temperature     Float    @default(0.5)
   maxTurns        Int      @default(20)  // safety: max LLM tool calls per turn
+
+  // Financial autonomy: when false (default), the agent CANNOT create invoices/payments
+  // from chat — a human must confirm in the dashboard. Never auto-create Payment from chat.
+  allowAutoInvoice Boolean @default(false)
 
   // Limits
   monthlyMessageLimit Int  @default(500)
@@ -834,4 +904,67 @@ model WhatsappMessage {
 
   @@index([conversationId])
   @@index([tenantId])
+}
+
+// ─── v4: Restaurante — Mesas y comandas ───────────────────────────────────────
+model RestaurantTable {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String   // "Mesa 1", "Barra 3"
+  zone      String?  // Salón, Terraza, Barra
+  seats     Int      @default(4)
+  status    String   @default("free") // free, occupied, bill_requested
+  posX      Int      @default(0)       // posición en el mapa visual
+  posY      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders    TableOrder[]
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+}
+
+model TableOrder {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tableId   String
+  status    String   @default("open") // open, sent_to_kitchen, served, billed, cancelled
+  items     Json     @default("[]")   // [{name, qty, unitPrice, notes, sentToKitchen}]
+  subtotal  Float    @default(0)
+  notes     String?
+  invoiceId String?  // factura generada al cerrar la cuenta
+  openedAt  DateTime @default(now())
+  closedAt  DateTime?
+  waiter    String?  // mesero que abrió
+
+  table     RestaurantTable @relation(fields: [tableId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([tableId])
+  @@index([tenantId, status])
+}
+
+// ─── v4: Agenda de citas (barbería/salud/estética/servicios) ──────────────────
+model Appointment {
+  id           String   @id @default(cuid())
+  tenantId     String
+  customerId   String?
+  customerName String   // nombre libre si no es cliente registrado
+  customerPhone String?
+  professional String?  // estilista/médico asignado
+  serviceName  String
+  productId    String?  // servicio del catálogo (opcional)
+  startAt      DateTime
+  durationMin  Int      @default(30)
+  status       String   @default("scheduled") // scheduled, confirmed, completed, cancelled, no_show
+  notes        String?
+  reminderSent Boolean  @default(false)
+  invoiceId    String?  // factura al completar
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([tenantId])
+  @@index([tenantId, startAt])
+  @@index([tenantId, status])
 }

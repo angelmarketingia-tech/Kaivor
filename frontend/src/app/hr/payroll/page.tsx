@@ -11,9 +11,9 @@ const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`;
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-CO', { dateStyle: 'medium' } as any);
 
 const ST: Record<string, { l: string; c: string }> = {
-  draft: { l: 'Borrador', c: 'bg-slate-100 text-slate-600' },
+  draft: { l: 'Borrador', c: 'surface-2 text-soft' },
   calculated: { l: 'Calculada', c: 'bg-blue-100 text-blue-700' },
-  approved: { l: 'Aprobada', c: 'bg-violet-100 text-violet-700' },
+  approved: { l: 'Aprobada', c: 'bg-brand-100 text-brand-700' },
   paid: { l: 'Pagada', c: 'bg-emerald-100 text-emerald-700' },
   partially_paid: { l: 'Pago parcial', c: 'bg-amber-100 text-amber-700' },
   cancelled: { l: 'Cancelada', c: 'bg-red-100 text-red-700' },
@@ -59,10 +59,10 @@ export default function PayrollPage() {
   );
   if (locked) return (
     <AppLayout><div className="p-6 max-w-md mx-auto mt-16 text-center">
-      <div className="bg-white rounded-xl border border-violet-200 p-8">
+      <div className="surface rounded-xl border p-8">
         <div className="text-4xl mb-3">🏢</div>
-        <h2 className="text-lg font-bold text-slate-900 mb-1">Nómina es un módulo Business</h2>
-        <Link href="/pricing" className="inline-block bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium mt-3">Ver planes →</Link>
+        <h2 className="text-lg font-bold text-default mb-1">Nómina es un módulo Business</h2>
+        <Link href="/pricing" className="inline-block bg-brand text-ink-900 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-300 mt-3">Ver planes →</Link>
       </div>
     </div></AppLayout>
   );
@@ -70,41 +70,41 @@ export default function PayrollPage() {
   return (
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-        {toast && <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
+        {toast && <div className="fixed top-4 right-4 z-50 bg-ink-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
 
         <div className="flex items-center gap-2 mb-4 text-sm">
-          <Link href="/hr" className="text-slate-500 hover:text-slate-900">RRHH</Link>
-          <span className="text-slate-300">/</span><span className="text-slate-900 font-medium">Nómina</span>
+          <Link href="/hr" className="text-soft hover:text-default">RRHH</Link>
+          <span className="text-soft">/</span><span className="text-default font-medium">Nómina</span>
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-slate-900">Nómina</h1>
+          <h1 className="text-2xl font-bold text-default">Nómina</h1>
           <button onClick={() => setShowForm(!showForm)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-700">
+            className="bg-ink-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-ink-700">
             {showForm ? 'Cancelar' : '+ Nuevo periodo'}
           </button>
         </div>
 
         {showForm && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-            <label className="text-xs text-slate-500 block mb-1">Nombre del periodo</label>
+          <div className="surface rounded-xl border p-5 mb-4">
+            <label className="text-xs text-soft block mb-1">Nombre del periodo</label>
             <input type="text" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="Ej: Quincena 1 - Mayo 2026" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
+              placeholder="Ej: Quincena 1 - Mayo 2026" className="w-full border border-default rounded-lg px-3 py-2 text-sm mb-3 bg-transparent text-default" />
             <div className="grid grid-cols-3 gap-3 mb-3">
-              <div><label className="text-xs text-slate-500 block mb-1">Inicio</label>
+              <div><label className="text-xs text-soft block mb-1">Inicio</label>
                 <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-2 text-sm" /></div>
-              <div><label className="text-xs text-slate-500 block mb-1">Fin</label>
+                  className="w-full border border-default rounded-lg px-2 py-2 text-sm bg-transparent text-default" /></div>
+              <div><label className="text-xs text-soft block mb-1">Fin</label>
                 <input type="date" value={form.endDate} onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-2 text-sm" /></div>
-              <div><label className="text-xs text-slate-500 block mb-1">Pago</label>
+                  className="w-full border border-default rounded-lg px-2 py-2 text-sm bg-transparent text-default" /></div>
+              <div><label className="text-xs text-soft block mb-1">Pago</label>
                 <input type="date" value={form.paymentDate} onChange={e => setForm(f => ({ ...f, paymentDate: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-2 py-2 text-sm" /></div>
+                  className="w-full border border-default rounded-lg px-2 py-2 text-sm bg-transparent text-default" /></div>
             </div>
             <label className="flex items-center gap-2 mb-3 cursor-pointer">
               <input type="checkbox" checked={form.includeAllActive} onChange={e => setForm(f => ({ ...f, includeAllActive: e.target.checked }))}
-                className="rounded border-slate-300 text-violet-600" />
-              <span className="text-sm text-slate-700">Incluir a todos los empleados activos</span>
+                className="rounded border-slate-300 text-brand" />
+              <span className="text-sm text-default">Incluir a todos los empleados activos</span>
             </label>
             <button onClick={create} disabled={saving}
               className="bg-emerald-600 text-white px-5 py-2 rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-50">
@@ -113,24 +113,24 @@ export default function PayrollPage() {
           </div>
         )}
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="surface rounded-xl border overflow-hidden">
           {periods.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-3xl mb-2 opacity-30">💵</div>
-              <p className="text-sm text-slate-500">Sin periodos de nómina aún.</p>
+              <p className="text-sm text-soft">Sin periodos de nómina aún.</p>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-default">
               {periods.map(p => {
                 const st = ST[p.status] ?? ST.draft;
                 return (
-                  <Link key={p.id} href={`/hr/payroll/${p.id}`} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50">
+                  <Link key={p.id} href={`/hr/payroll/${p.id}`} className="flex items-center justify-between px-4 py-3 hover-surface-2">
                     <div>
-                      <p className="text-sm font-medium text-violet-700">{p.name}</p>
-                      <p className="text-xs text-slate-400">{fmtDate(p.startDate)} – {fmtDate(p.endDate)} · {p.itemCount} empleado(s)</p>
+                      <p className="text-sm font-medium text-brand">{p.name}</p>
+                      <p className="text-xs text-soft">{fmtDate(p.startDate)} – {fmtDate(p.endDate)} · {p.itemCount} empleado(s)</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-semibold text-slate-900">{fmt(p.totalNet)}</p>
+                      <p className="text-sm font-semibold text-default">{fmt(p.totalNet)}</p>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${st.c}`}>{st.l}</span>
                     </div>
                   </Link>

@@ -95,37 +95,38 @@ export default function ImportsPage() {
   return (
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
-        {toast && <div className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-slate-900 text-white">{toast}</div>}
+        {toast && <div className="fixed top-4 right-4 z-50 px-4 py-2.5 rounded-lg text-sm font-medium shadow-lg bg-ink-900 text-white">{toast}</div>}
 
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Importar desde Excel</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Migra tus clientes y productos desde archivos Excel o CSV.</p>
+          <h1 className="text-2xl font-bold text-default">Importar desde Excel</h1>
+          <p className="text-sm text-soft mt-0.5">Migra tus clientes y productos desde archivos Excel o CSV.</p>
         </div>
 
         {/* Step: pick */}
         {step === 'pick' && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 mb-5">
-            <h2 className="text-sm font-semibold text-slate-700 mb-3">¿Qué quieres importar?</h2>
+          <div className="surface rounded-xl border p-5 mb-5">
+            <h2 className="text-sm font-semibold text-default mb-3">¿Qué quieres importar?</h2>
             <div className="grid grid-cols-2 gap-3 mb-4">
               {([['customers', 'Clientes', '◉'], ['products', 'Productos', '▤']] as const).map(([id, label, icon]) => (
                 <button key={id} onClick={() => setEntityType(id)}
-                  className={`p-4 rounded-lg border text-left transition-colors ${entityType === id ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                  className={`p-4 rounded-lg border text-left transition-colors ${entityType === id ? 'border-brand' : 'border-default hover:border-brand-300'}`}
+                  style={entityType === id ? { backgroundColor: 'rgba(163,204,57,0.10)' } : undefined}>
                   <span className="text-xl">{icon}</span>
-                  <p className="text-sm font-medium text-slate-900 mt-1">{label}</p>
+                  <p className="text-sm font-medium text-default mt-1">{label}</p>
                 </button>
               ))}
             </div>
             <div className="flex gap-2 mb-3">
               <button onClick={downloadTemplate}
-                className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">
+                className="text-xs surface-2 text-default px-3 py-1.5 rounded-lg hover:bg-surface-2">
                 ↓ Descargar plantilla {entityType === 'customers' ? 'clientes' : 'productos'}
               </button>
             </div>
             <button onClick={() => fileRef.current?.click()}
-              className="w-full border-2 border-dashed border-slate-200 rounded-lg py-10 text-center hover:border-violet-300 hover:bg-violet-50 transition-colors">
+              className="w-full border-2 border-dashed border-default rounded-lg py-10 text-center hover:border-brand hover:bg-brand-50 transition-colors">
               <p className="text-3xl mb-1">📊</p>
-              <p className="text-sm font-medium text-slate-700">Subir archivo Excel o CSV</p>
-              <p className="text-xs text-slate-400 mt-0.5">.xlsx, .xls o .csv</p>
+              <p className="text-sm font-medium text-default">Subir archivo Excel o CSV</p>
+              <p className="text-xs text-soft mt-0.5">.xlsx, .xls o .csv</p>
             </button>
             <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv" className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ''; }} />
@@ -134,24 +135,24 @@ export default function ImportsPage() {
 
         {/* Step: map */}
         {step === 'map' && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 mb-5">
+          <div className="surface rounded-xl border p-5 mb-5">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-sm font-semibold text-slate-700">Mapeo de columnas — {fileName}</h2>
-              <button onClick={reset} className="text-xs text-slate-400 hover:text-slate-600">Cambiar archivo</button>
+              <h2 className="text-sm font-semibold text-default">Mapeo de columnas — {fileName}</h2>
+              <button onClick={reset} className="text-xs text-soft hover:text-default">Cambiar archivo</button>
             </div>
-            <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2 mb-4">
-              <p className="text-xs text-violet-700">✦ {aiMsg}</p>
+            <div className="rounded-lg px-3 py-2 mb-4" style={{ backgroundColor: 'rgba(163,204,57,0.10)', border: '1px solid rgba(163,204,57,0.22)' }}>
+              <p className="text-xs text-brand">✦ {aiMsg}</p>
             </div>
-            <p className="text-xs text-slate-400 mb-2">{rows.length} fila(s) detectada(s). Asigna cada campo de KAIROS a una columna de tu archivo.</p>
+            <p className="text-xs text-soft mb-2">{rows.length} fila(s) detectada(s). Asigna cada campo de KAIROS a una columna de tu archivo.</p>
             <div className="space-y-2 mb-4">
               {fields.map(f => (
                 <div key={f.field} className="flex items-center gap-3">
-                  <span className="text-sm text-slate-700 w-40 flex-shrink-0">
+                  <span className="text-sm text-default w-40 flex-shrink-0">
                     {f.label}{f.required && <span className="text-red-500"> *</span>}
                   </span>
                   <select value={mapping[f.field] || ''}
                     onChange={e => setMapping(m => ({ ...m, [f.field]: e.target.value }))}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm">
+                    className="flex-1 surface border rounded-lg px-3 py-1.5 text-sm text-default">
                     <option value="">— Sin asignar —</option>
                     {headers.map(h => <option key={h} value={h}>{h}</option>)}
                   </select>
@@ -160,17 +161,17 @@ export default function ImportsPage() {
             </div>
 
             {/* Preview */}
-            <p className="text-xs text-slate-400 mb-1">Vista previa (primeras 3 filas):</p>
-            <div className="overflow-x-auto mb-4 border border-slate-100 rounded-lg">
+            <p className="text-xs text-soft mb-1">Vista previa (primeras 3 filas):</p>
+            <div className="overflow-x-auto mb-4 border border-default rounded-lg">
               <table className="w-full text-xs">
-                <thead className="bg-slate-50">
-                  <tr>{fields.filter(f => mapping[f.field]).map(f => <th key={f.field} className="px-2 py-1.5 text-left text-slate-500">{f.label}</th>)}</tr>
+                <thead className="surface-2">
+                  <tr>{fields.filter(f => mapping[f.field]).map(f => <th key={f.field} className="px-2 py-1.5 text-left text-soft">{f.label}</th>)}</tr>
                 </thead>
                 <tbody>
                   {rows.slice(0, 3).map((r, i) => (
-                    <tr key={i} className="border-t border-slate-100">
+                    <tr key={i} className="border-t border-default">
                       {fields.filter(f => mapping[f.field]).map(f => (
-                        <td key={f.field} className="px-2 py-1.5 text-slate-700">{String(r[mapping[f.field]] ?? '')}</td>
+                        <td key={f.field} className="px-2 py-1.5 text-default">{String(r[mapping[f.field]] ?? '')}</td>
                       ))}
                     </tr>
                   ))}
@@ -187,11 +188,11 @@ export default function ImportsPage() {
 
         {/* Step: done */}
         {step === 'done' && result && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 mb-5">
+          <div className="surface rounded-xl border p-5 mb-5">
             <div className="text-center mb-4">
               <p className="text-3xl mb-1">{result.errors.length === result.total ? '⚠️' : '✓'}</p>
-              <h2 className="text-lg font-bold text-slate-900">Importación completada</h2>
-              <p className="text-sm text-slate-500">
+              <h2 className="text-lg font-bold text-default">Importación completada</h2>
+              <p className="text-sm text-soft">
                 {result.imported} de {result.total} fila(s) importada(s) correctamente.
               </p>
             </div>
@@ -206,10 +207,10 @@ export default function ImportsPage() {
               </div>
             )}
             <div className="flex gap-2">
-              <button onClick={reset} className="flex-1 bg-slate-900 text-white py-2 rounded-lg text-sm font-medium hover:bg-slate-700">
+              <button onClick={reset} className="flex-1 bg-brand text-ink-900 py-2 rounded-lg text-sm font-semibold hover:bg-brand-300">
                 Importar otro archivo
               </button>
-              <Link href={`/${entityType}`} className="flex-1 text-center border border-slate-200 text-slate-700 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+              <Link href={`/${entityType}`} className="flex-1 text-center border border-default text-default py-2 rounded-lg text-sm font-medium hover:bg-surface-2">
                 Ver {entityType === 'customers' ? 'clientes' : 'productos'}
               </Link>
             </div>
@@ -218,19 +219,19 @@ export default function ImportsPage() {
 
         {/* History */}
         {jobs.length > 0 && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100">
-              <h2 className="text-sm font-semibold text-slate-700">Historial de importaciones</h2>
+          <div className="surface rounded-xl border overflow-hidden">
+            <div className="px-5 py-3 border-b border-default">
+              <h2 className="text-sm font-semibold text-default">Historial de importaciones</h2>
             </div>
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-[color:var(--border)]">
               {jobs.map(j => (
                 <div key={j.id} className="px-5 py-3 flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">
+                    <p className="text-sm font-medium text-default">
                       {j.entityType === 'customers' ? 'Clientes' : 'Productos'}
-                      {j.fileName && <span className="text-slate-400 font-normal"> · {j.fileName}</span>}
+                      {j.fileName && <span className="text-soft font-normal"> · {j.fileName}</span>}
                     </p>
-                    <p className="text-xs text-slate-400">{fmtDate(j.createdAt)}</p>
+                    <p className="text-xs text-soft">{fmtDate(j.createdAt)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-semibold text-emerald-600">{j.importedRows} importados</p>

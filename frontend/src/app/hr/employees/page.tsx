@@ -16,7 +16,7 @@ interface Employee {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   active: { label: 'Activo', cls: 'bg-emerald-100 text-emerald-700' },
-  inactive: { label: 'Inactivo', cls: 'bg-slate-100 text-slate-500' },
+  inactive: { label: 'Inactivo', cls: 'surface-2 text-soft' },
   on_leave: { label: 'En licencia', cls: 'bg-amber-100 text-amber-700' },
   terminated: { label: 'Retirado', cls: 'bg-red-100 text-red-700' },
 };
@@ -69,11 +69,11 @@ export default function EmployeesPage() {
   );
   if (locked) return (
     <AppLayout><div className="p-6 max-w-md mx-auto mt-16 text-center">
-      <div className="bg-white rounded-xl border border-violet-200 p-8">
+      <div className="surface rounded-xl border p-8">
         <div className="text-4xl mb-3">🏢</div>
-        <h2 className="text-lg font-bold text-slate-900 mb-1">RRHH es un módulo Business</h2>
-        <p className="text-sm text-slate-500 mb-5">Mejora tu plan para gestionar empleados y nómina.</p>
-        <Link href="/pricing" className="inline-block bg-violet-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium">Ver planes →</Link>
+        <h2 className="text-lg font-bold text-default mb-1">RRHH es un módulo Business</h2>
+        <p className="text-sm text-soft mb-5">Mejora tu plan para gestionar empleados y nómina.</p>
+        <Link href="/pricing" className="inline-block bg-brand text-ink-900 px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-300">Ver planes →</Link>
       </div>
     </div></AppLayout>
   );
@@ -81,42 +81,42 @@ export default function EmployeesPage() {
   return (
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-        {toast && <div className="fixed top-4 right-4 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
+        {toast && <div className="fixed top-4 right-4 z-50 bg-ink-900 text-white px-4 py-2.5 rounded-lg text-sm shadow-lg">{toast}</div>}
 
         <div className="flex items-center gap-2 mb-4 text-sm">
-          <Link href="/hr" className="text-slate-500 hover:text-slate-900">RRHH</Link>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-medium">Empleados</span>
+          <Link href="/hr" className="text-soft hover:text-default">RRHH</Link>
+          <span className="text-soft">/</span>
+          <span className="text-default font-medium">Empleados</span>
         </div>
 
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold text-slate-900">Empleados</h1>
+          <h1 className="text-2xl font-bold text-default">Empleados</h1>
           <button onClick={() => setShowForm(!showForm)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-700">
+            className="bg-ink-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-ink-700">
             {showForm ? 'Cancelar' : '+ Nuevo empleado'}
           </button>
         </div>
 
         {showForm && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+          <div className="surface rounded-xl border p-5 mb-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {([['firstName', 'Nombre *'], ['lastName', 'Apellido *'], ['documentNumber', 'Documento'],
                 ['email', 'Email'], ['phone', 'Teléfono'], ['position', 'Cargo'], ['department', 'Área']] as const).map(([k, label]) => (
                 <div key={k}>
-                  <label className="text-xs text-slate-500 block mb-1">{label}</label>
+                  <label className="text-xs text-soft block mb-1">{label}</label>
                   <input type="text" value={(form as any)[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    className="w-full border border-default rounded-lg px-3 py-2 text-sm bg-transparent text-default" />
                 </div>
               ))}
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Salario mensual</label>
+                <label className="text-xs text-soft block mb-1">Salario mensual</label>
                 <input type="number" value={form.salary} onChange={e => setForm(f => ({ ...f, salary: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-default rounded-lg px-3 py-2 text-sm bg-transparent text-default" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Tipo de contrato</label>
+                <label className="text-xs text-soft block mb-1">Tipo de contrato</label>
                 <select value={form.contractType} onChange={e => setForm(f => ({ ...f, contractType: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm">
+                  className="w-full border border-default rounded-lg px-3 py-2 text-sm bg-transparent text-default">
                   <option value="indefinido">Indefinido</option>
                   <option value="fijo">Término fijo</option>
                   <option value="prestacion">Prestación de servicios</option>
@@ -124,9 +124,9 @@ export default function EmployeesPage() {
                 </select>
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1">Fecha de ingreso</label>
+                <label className="text-xs text-soft block mb-1">Fecha de ingreso</label>
                 <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full border border-default rounded-lg px-3 py-2 text-sm bg-transparent text-default" />
               </div>
             </div>
             <button onClick={create} disabled={saving}
@@ -138,36 +138,36 @@ export default function EmployeesPage() {
 
         <input type="text" value={search} onChange={e => setSearch(e.target.value)}
           placeholder="Buscar por nombre, área o cargo…"
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-4" />
+          className="w-full border border-default rounded-lg px-3 py-2 text-sm mb-4 bg-transparent text-default" />
 
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="surface rounded-xl border overflow-hidden">
           {filtered.length === 0 ? (
             <div className="text-center py-12">
               <div className="text-3xl mb-2 opacity-30">👤</div>
-              <p className="text-sm text-slate-500">{employees.length === 0 ? 'Sin empleados aún.' : 'Sin resultados.'}</p>
+              <p className="text-sm text-soft">{employees.length === 0 ? 'Sin empleados aún.' : 'Sin resultados.'}</p>
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-100">
+              <thead className="surface-2 border-b border-default">
                 <tr>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase">Empleado</th>
-                  <th className="text-left px-4 py-2.5 text-xs font-medium text-slate-500 uppercase hidden sm:table-cell">Área</th>
-                  <th className="text-right px-4 py-2.5 text-xs font-medium text-slate-500 uppercase hidden sm:table-cell">Salario</th>
-                  <th className="text-center px-4 py-2.5 text-xs font-medium text-slate-500 uppercase">Estado</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-soft uppercase">Empleado</th>
+                  <th className="text-left px-4 py-2.5 text-xs font-medium text-soft uppercase hidden sm:table-cell">Área</th>
+                  <th className="text-right px-4 py-2.5 text-xs font-medium text-soft uppercase hidden sm:table-cell">Salario</th>
+                  <th className="text-center px-4 py-2.5 text-xs font-medium text-soft uppercase">Estado</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-default">
                 {filtered.map(e => {
                   const st = STATUS[e.status] ?? STATUS.active;
                   return (
                     <tr key={e.id} onClick={() => router.push(`/hr/employees/${e.id}`)}
-                      className="hover:bg-slate-50 cursor-pointer">
+                      className="hover-surface-2 cursor-pointer">
                       <td className="px-4 py-3">
-                        <p className="text-sm font-medium text-violet-700 hover:underline">{e.firstName} {e.lastName}</p>
-                        {e.position && <p className="text-xs text-slate-400">{e.position}</p>}
+                        <p className="text-sm font-medium text-brand hover:underline">{e.firstName} {e.lastName}</p>
+                        {e.position && <p className="text-xs text-soft">{e.position}</p>}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 hidden sm:table-cell">{e.department || '—'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-700 text-right hidden sm:table-cell">{fmt(e.salary)}</td>
+                      <td className="px-4 py-3 text-sm text-soft hidden sm:table-cell">{e.department || '—'}</td>
+                      <td className="px-4 py-3 text-sm text-default text-right hidden sm:table-cell">{fmt(e.salary)}</td>
                       <td className="px-4 py-3 text-center">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${st.cls}`}>{st.label}</span>
                       </td>

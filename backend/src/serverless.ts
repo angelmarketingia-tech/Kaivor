@@ -1,9 +1,11 @@
 import 'reflect-metadata';
-import { NestFactory } from '@nestjs/core';
+import { NestFactory, HttpAdapterHost } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import { initSentry, sentryErrorHandler } from './common/sentry';
+import { PrismaExceptionFilter } from './common/prisma-exception.filter';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const express = require('express');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -37,6 +39,15 @@ export async function getExpressServer(): Promise<Express> {
       transform: true,
       transformOptions: { enableImplicitConversion: true },
     }),
+  );
+
+  // Map Prisma constraint errors (P2002/P2025/P2003) to clean 4xx instead of 500.
+  // Order matters: Prisma filter first (handles P2002/P2025), then the catch-all
+  // which captures unhandled 5xx to Sentry and passes 4xx through unchanged.
+  const httpAdapterHost = app.get(HttpAdapterHost);
+  app.useGlobalFilters(
+    new PrismaExceptionFilter(),
+    new AllExceptionsFilter(httpAdapterHost.httpAdapter),
   );
 
   await app.init();

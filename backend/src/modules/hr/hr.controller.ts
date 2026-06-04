@@ -2,9 +2,13 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request, 
 import { AuthGuard } from '@nestjs/passport';
 import { HrService } from './hr.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { RolesGuard } from '@/common/roles.guard';
+import { Roles } from '@/common/roles.decorator';
+import { PermissionsGuard, RequirePermissions } from '@/common/permissions.guard';
 
 @Controller('hr')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), RolesGuard, PermissionsGuard)
+@RequirePermissions('hr.view')
 export class HrController {
   constructor(private hr: HrService, private prisma: PrismaService) {}
 
@@ -38,6 +42,7 @@ export class HrController {
   }
 
   @Delete('employees/:id')
+  @Roles('admin', 'manager', 'platform_superadmin', 'superadmin')
   deleteEmployee(@Request() req: any, @Param('id') id: string) {
     return this.hr.deleteEmployee(req.user.tenantId, id);
   }
@@ -59,6 +64,11 @@ export class HrController {
     return r;
   }
 
+  @Patch('payroll/:id')
+  updatePayrollPeriod(@Request() req: any, @Param('id') id: string, @Body() body: any) {
+    return this.hr.updatePayrollPeriod(req.user.tenantId, id, body);
+  }
+
   @Get('payroll/:id/receipts')
   listReceipts(@Request() req: any, @Param('id') id: string) {
     return this.hr.listPayrollReceipts(req.user.tenantId, id);
@@ -72,6 +82,16 @@ export class HrController {
   @Get('balances')
   listBalances(@Request() req: any) {
     return this.hr.listBalances(req.user.tenantId);
+  }
+
+  @Post('balances')
+  createBalance(@Request() req: any, @Body() body: any) {
+    return this.hr.createBalance(req.user.tenantId, body);
+  }
+
+  @Patch('balances')
+  updateBalance(@Request() req: any, @Body() body: any) {
+    return this.hr.updateBalance(req.user.tenantId, body);
   }
 
   @Get('vacancies')

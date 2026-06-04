@@ -73,9 +73,9 @@ export class AiInsightsService {
 
     // Resolver nombre de producto top
     let topProductName = 'Sin datos';
-    if (topProducts.length > 0) {
+    if (topProducts.length > 0 && topProducts[0].productId) {
       const product = await this.prisma.product.findUnique({
-        where: { id: topProducts[0].productId },
+        where: { id: topProducts[0].productId as string },
         select: { name: true },
       });
       topProductName = product?.name ?? 'Producto desconocido';

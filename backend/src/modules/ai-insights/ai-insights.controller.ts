@@ -1,9 +1,11 @@
 import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AiInsightsService } from './ai-insights.service';
+import { PermissionsGuard, RequirePermissions } from '@/common/permissions.guard';
 
 @Controller('ai-insights')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@RequirePermissions('ai.use')
 export class AiInsightsController {
   constructor(private aiInsightsService: AiInsightsService) {}
 

@@ -1,0 +1,46 @@
+name: E2E Tests (Cypress)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    # Daily smoke test at 13:00 UTC (08:00 Bogota)
+    - cron: '0 13 * * *'
+
+jobs:
+  cypress-prod:
+    name: Cypress against production
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Cypress
+        run: |
+          npm install --no-save cypress@13
+
+      - name: Run Cypress E2E against production
+        env:
+          CYPRESS_apiUrl: https://kaivor-api.vercel.app
+          CYPRESS_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+          CYPRESS_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+        run: |
+          npx cypress run \
+            --config baseUrl=https://kaivor.vercel.app \
+            --spec "cypress/e2e/10-api-health.cy.ts,cypress/e2e/20-auth-security.cy.ts,cypress/e2e/30-core-crud.cy.ts,cypress/e2e/40-modules.cy.ts,cypress/e2e/50-admin-mfa.cy.ts"
+
+      - name: Upload screenshots on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots
+          if-no-files-found: ignore

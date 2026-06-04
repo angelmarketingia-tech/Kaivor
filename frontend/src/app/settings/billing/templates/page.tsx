@@ -188,7 +188,7 @@ export default function BillingTemplatesPage() {
   if (loading) return (
     <AppLayout>
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-default border-t-brand rounded-full animate-spin" />
       </div>
     </AppLayout>
   );
@@ -209,31 +209,31 @@ export default function BillingTemplatesPage() {
         {/* Header */}
         <div className="mb-5">
           <button onClick={() => router.push('/settings/billing')}
-            className="text-sm text-slate-500 hover:text-slate-900 mb-2 inline-flex items-center gap-1">
+            className="text-sm text-soft hover:text-default mb-2 inline-flex items-center gap-1">
             ← Facturación
           </button>
-          <h1 className="text-2xl font-bold text-slate-900">Diseño de factura</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Personaliza el logo, colores y estilo de tus facturas, PDF y tirillas.</p>
+          <h1 className="text-2xl font-bold text-default">Diseño de factura</h1>
+          <p className="text-sm text-soft mt-0.5">Personaliza el logo, colores y estilo de tus facturas, PDF y tirillas.</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
           {/* Left: settings */}
           <div className="space-y-4">
             {/* Logo */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3">Logo de la empresa</h2>
+            <div className="surface rounded-xl border p-5">
+              <h2 className="text-sm font-semibold text-default mb-3">Logo de la empresa</h2>
               {branding.logoData ? (
                 <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 border border-slate-200 rounded-lg flex items-center justify-center bg-slate-50 p-2">
+                  <div className="w-24 h-24 border border-default rounded-lg flex items-center justify-center surface-2 p-2">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={branding.logoData} alt="logo" className="max-w-full max-h-full object-contain" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-slate-900 truncate">{branding.logoFileName}</p>
-                    {branding.logoWidth && <p className="text-xs text-slate-500">{branding.logoWidth} × {branding.logoHeight} px</p>}
+                    <p className="text-sm font-medium text-default truncate">{branding.logoFileName}</p>
+                    {branding.logoWidth && <p className="text-xs text-soft">{branding.logoWidth} × {branding.logoHeight} px</p>}
                     <div className="flex gap-2 mt-2">
                       <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                        className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200 disabled:opacity-50">
+                        className="text-xs surface-2 text-default px-3 py-1.5 rounded-lg hover:bg-brand-50 disabled:opacity-50">
                         {uploading ? 'Subiendo…' : 'Reemplazar'}
                       </button>
                       <button onClick={removeLogo}
@@ -245,10 +245,10 @@ export default function BillingTemplatesPage() {
                 </div>
               ) : (
                 <button onClick={() => fileRef.current?.click()} disabled={uploading}
-                  className="w-full border-2 border-dashed border-slate-200 rounded-lg py-8 text-center hover:border-violet-300 hover:bg-violet-50 transition-colors disabled:opacity-50">
+                  className="w-full border-2 border-dashed border-default rounded-lg py-8 text-center hover:border-brand hover:bg-brand-50 transition-colors disabled:opacity-50">
                   <p className="text-2xl mb-1">{uploading ? '⏳' : '🖼'}</p>
-                  <p className="text-sm font-medium text-slate-700">{uploading ? 'Subiendo logo…' : 'Subir logo PNG'}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">PNG, JPG o WebP · máx 1MB</p>
+                  <p className="text-sm font-medium text-default">{uploading ? 'Subiendo logo…' : 'Subir logo PNG'}</p>
+                  <p className="text-xs text-soft mt-0.5">PNG, JPG o WebP · máx 1MB</p>
                 </button>
               )}
               <input ref={fileRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden"
@@ -256,29 +256,29 @@ export default function BillingTemplatesPage() {
             </div>
 
             {/* AI optimize */}
-            <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-xl border border-violet-100 p-5">
+            <div className="surface rounded-xl border p-5" style={{ background: 'linear-gradient(135deg, rgba(163,204,57,0.12), rgba(11,18,32,0.04))' }}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-semibold text-violet-900">✦ Optimizar diseño con IA</h2>
+                <h2 className="text-sm font-semibold text-brand">✦ Optimizar diseño con IA</h2>
               </div>
               {!aiRec ? (
                 <>
-                  <p className="text-xs text-violet-700 mb-3">KAIROS AI analiza las proporciones de tu logo y sugiere tamaño, posición, color y plantilla.</p>
+                  <p className="text-xs text-soft mb-3">KAIROS AI analiza las proporciones de tu logo y sugiere tamaño, posición, color y plantilla.</p>
                   <button onClick={optimizeWithAI} disabled={!branding.logoData}
-                    className="text-sm bg-violet-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-violet-700 disabled:opacity-40">
+                    className="text-sm bg-brand text-ink-900 px-4 py-2 rounded-lg font-semibold hover:bg-brand-300 disabled:opacity-40">
                     Optimizar diseño con IA
                   </button>
-                  {!branding.logoData && <p className="text-xs text-violet-500 mt-2">Sube un logo para activar esta función.</p>}
+                  {!branding.logoData && <p className="text-xs text-soft mt-2">Sube un logo para activar esta función.</p>}
                 </>
               ) : (
                 <>
-                  <p className="text-sm text-violet-800 mb-3 leading-relaxed">{aiRec}</p>
+                  <p className="text-sm text-default mb-3 leading-relaxed">{aiRec}</p>
                   <div className="flex gap-2 flex-wrap">
                     <button onClick={applySuggestion}
-                      className="text-xs bg-violet-600 text-white px-3 py-1.5 rounded-lg font-medium hover:bg-violet-700">
+                      className="text-xs bg-brand text-ink-900 px-3 py-1.5 rounded-lg font-semibold hover:bg-brand-300">
                       Aplicar recomendación
                     </button>
                     <button onClick={() => { setAiRec(null); setAiSuggestion(null); }}
-                      className="text-xs bg-white text-violet-700 border border-violet-200 px-3 py-1.5 rounded-lg hover:bg-violet-50">
+                      className="text-xs surface text-default border px-3 py-1.5 rounded-lg hover:bg-brand-50">
                       Mantener mi diseño
                     </button>
                   </div>
@@ -287,83 +287,83 @@ export default function BillingTemplatesPage() {
             </div>
 
             {/* Template style */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3">Estilo visual</h2>
+            <div className="surface rounded-xl border p-5">
+              <h2 className="text-sm font-semibold text-default mb-3">Estilo visual</h2>
               <div className="grid grid-cols-2 gap-2">
                 {TEMPLATES.map(t => (
                   <button key={t.id} onClick={() => setBranding(b => ({ ...b, invoiceTemplate: t.id }))}
-                    className={`text-left p-3 rounded-lg border transition-colors ${branding.invoiceTemplate === t.id ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
-                    <p className="text-sm font-medium text-slate-900">{t.label}</p>
-                    <p className="text-xs text-slate-500">{t.desc}</p>
+                    className={`text-left p-3 rounded-lg border transition-colors ${branding.invoiceTemplate === t.id ? 'border-brand bg-brand-50' : 'border-default hover:border-brand'}`}>
+                    <p className="text-sm font-medium text-default">{t.label}</p>
+                    <p className="text-xs text-soft">{t.desc}</p>
                   </button>
                 ))}
               </div>
             </div>
 
             {/* Logo placement */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3">Posición y tamaño del logo</h2>
+            <div className="surface rounded-xl border p-5">
+              <h2 className="text-sm font-semibold text-default mb-3">Posición y tamaño del logo</h2>
               <div className="mb-3">
-                <label className="text-xs text-slate-500 block mb-1.5">Posición</label>
+                <label className="text-xs text-soft block mb-1.5">Posición</label>
                 <div className="flex gap-2">
                   {(['left', 'center', 'right'] as const).map(p => (
                     <button key={p} onClick={() => setBranding(b => ({ ...b, logoPosition: p }))}
-                      className={`flex-1 py-1.5 text-xs rounded-lg border ${branding.logoPosition === p ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                      className={`flex-1 py-1.5 text-xs rounded-lg border ${branding.logoPosition === p ? 'border-ink-900 bg-ink-900 text-white' : 'border-default text-soft hover:bg-brand-50'}`}>
                       {p === 'left' ? 'Izquierda' : p === 'center' ? 'Centro' : 'Derecha'}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="mb-3">
-                <label className="text-xs text-slate-500 block mb-1.5">Tamaño</label>
+                <label className="text-xs text-soft block mb-1.5">Tamaño</label>
                 <div className="flex gap-2">
                   {(['small', 'medium', 'large'] as const).map(s => (
                     <button key={s} onClick={() => setBranding(b => ({ ...b, logoSize: s }))}
-                      className={`flex-1 py-1.5 text-xs rounded-lg border ${branding.logoSize === s ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
+                      className={`flex-1 py-1.5 text-xs rounded-lg border ${branding.logoSize === s ? 'border-ink-900 bg-ink-900 text-white' : 'border-default text-soft hover:bg-brand-50'}`}>
                       {s === 'small' ? 'Pequeño' : s === 'medium' ? 'Mediano' : 'Grande'}
                     </button>
                   ))}
                 </div>
               </div>
               <div className="space-y-1.5">
-                <label className="text-xs text-slate-500 block">Mostrar logo en</label>
+                <label className="text-xs text-soft block">Mostrar logo en</label>
                 {([['showLogoOnInvoice', 'Factura completa'], ['showLogoOnPdf', 'PDF'], ['showLogoOnReceipt', 'Tirilla']] as const).map(([key, label]) => (
                   <label key={key} className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={branding[key] as boolean}
                       onChange={e => setBranding(b => ({ ...b, [key]: e.target.checked }))}
-                      className="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
-                    <span className="text-sm text-slate-700">{label}</span>
+                      className="rounded border-default text-brand focus:ring-brand" />
+                    <span className="text-sm text-default">{label}</span>
                   </label>
                 ))}
               </div>
             </div>
 
             {/* Color + messages */}
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
-              <h2 className="text-sm font-semibold text-slate-700 mb-3">Color y textos</h2>
+            <div className="surface rounded-xl border p-5">
+              <h2 className="text-sm font-semibold text-default mb-3">Color y textos</h2>
               <div className="mb-3">
-                <label className="text-xs text-slate-500 block mb-1.5">Color principal</label>
+                <label className="text-xs text-soft block mb-1.5">Color principal</label>
                 <div className="flex items-center gap-2">
                   <input type="color" value={branding.primaryColor}
                     onChange={e => setBranding(b => ({ ...b, primaryColor: e.target.value }))}
-                    className="w-12 h-9 rounded border border-slate-200 cursor-pointer" />
+                    className="w-12 h-9 rounded border border-default cursor-pointer" />
                   <input type="text" value={branding.primaryColor}
                     onChange={e => setBranding(b => ({ ...b, primaryColor: e.target.value }))}
-                    className="flex-1 border border-slate-200 rounded-lg px-3 py-1.5 text-sm font-mono" />
+                    className="flex-1 surface border rounded-lg px-3 py-1.5 text-sm font-mono text-default" />
                 </div>
               </div>
               <div className="mb-3">
-                <label className="text-xs text-slate-500 block mb-1.5">Mensaje final</label>
+                <label className="text-xs text-soft block mb-1.5">Mensaje final</label>
                 <input type="text" value={branding.footerMessage}
                   onChange={e => setBranding(b => ({ ...b, footerMessage: e.target.value }))}
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default" />
               </div>
               <div>
-                <label className="text-xs text-slate-500 block mb-1.5">Nota legal (opcional)</label>
+                <label className="text-xs text-soft block mb-1.5">Nota legal (opcional)</label>
                 <textarea rows={2} value={branding.legalNote || ''}
                   onChange={e => setBranding(b => ({ ...b, legalNote: e.target.value }))}
                   placeholder="Ej: Régimen común. Resolución DIAN N°..."
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none" />
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm resize-none text-default" />
               </div>
             </div>
 
@@ -374,7 +374,7 @@ export default function BillingTemplatesPage() {
                 {saving ? 'Guardando…' : 'Guardar plantilla'}
               </button>
               <button onClick={restoreDefaults}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium border border-slate-200 text-slate-600 hover:bg-slate-50">
+                className="px-4 py-2.5 rounded-xl text-sm font-medium border border-default text-soft hover:bg-brand-50">
                 Restaurar
               </button>
             </div>
@@ -382,7 +382,7 @@ export default function BillingTemplatesPage() {
 
           {/* Right: live preview */}
           <div className="lg:sticky lg:top-6 self-start">
-            <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-2">Vista previa en tiempo real</p>
+            <p className="text-xs text-soft uppercase tracking-wide font-medium mb-2">Vista previa en tiempo real</p>
             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
               {/* Premium template has colored header bar */}
               {branding.invoiceTemplate === 'premium' && (
@@ -445,7 +445,7 @@ export default function BillingTemplatesPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-slate-400 mt-2 text-center">
+            <p className="text-xs text-soft mt-2 text-center">
               Así se verá la cabecera de tus facturas. El PDF y la tirilla usan la misma configuración.
             </p>
           </div>

@@ -44,6 +44,19 @@ export class AuthController {
     return { ok: true };
   }
 
+  // ── Password reset ──
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @Post('forgot-password')
+  async forgotPassword(@Body() body: { email: string }) {
+    return this.authService.forgotPassword(body.email);
+  }
+
+  @Throttle({ short: { limit: 5, ttl: 60000 } })
+  @Post('reset-password')
+  async resetPassword(@Body() body: { token: string; password: string }) {
+    return this.authService.resetPassword(body.token, body.password);
+  }
+
   // ── MFA / TOTP ──
   @UseGuards(AuthGuard('jwt'))
   @Post('mfa/setup')

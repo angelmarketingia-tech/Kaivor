@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { MessagesService } from './messages.service';
 
@@ -8,8 +8,8 @@ export class MessagesController {
   constructor(private messages: MessagesService) {}
 
   @Get()
-  list(@Request() req: any) {
-    return this.messages.list(req.user.tenantId);
+  list(@Request() req: any, @Query('channel') channel?: string) {
+    return this.messages.list(req.user.tenantId, channel);
   }
 
   @Post()

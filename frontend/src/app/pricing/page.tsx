@@ -14,7 +14,7 @@ const PLANS = [
     price: '$0',
     period: 'para siempre',
     description: 'Empieza facturando gratis. Sin tarjeta de crédito.',
-    color: 'border-slate-200',
+    color: 'border-default',
     badge: '',
     features: ['45 facturas por mes', '1 usuario', 'Clientes y productos', 'Soporte por email'],
     missing: ['WooCommerce', 'Kaivor AI', 'Reportes avanzados'],
@@ -26,7 +26,7 @@ const PLANS = [
     price: '$19',
     period: '/mes',
     description: 'Más facturas y colaboración básica para crecer.',
-    color: 'border-slate-200',
+    color: 'border-default',
     badge: '',
     features: ['150 facturas por mes', '2 usuarios', 'Soporte prioritario'],
     missing: ['WooCommerce', 'Kaivor AI'],
@@ -38,7 +38,7 @@ const PLANS = [
     price: '$49',
     period: '/mes',
     description: 'IA, reportes e integración con WooCommerce.',
-    color: 'border-violet-400',
+    color: 'border-brand',
     badge: 'Más popular',
     features: [
       '500 facturas por mes',
@@ -57,7 +57,7 @@ const PLANS = [
     price: '$99',
     period: '/mes',
     description: 'Equipos grandes, automatizaciones y ecommerce avanzado.',
-    color: 'border-slate-200',
+    color: 'border-default',
     badge: '',
     features: [
       'Facturas ilimitadas',
@@ -76,7 +76,7 @@ const PLANS = [
     price: 'A medida',
     period: '',
     description: 'Solución personalizada para grandes operaciones.',
-    color: 'border-slate-300',
+    color: 'border-default',
     badge: '',
     features: [
       'Facturas ilimitadas',
@@ -135,20 +135,20 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <nav className="bg-white border-b border-slate-200">
+    <div className="min-h-screen app-bg">
+      <nav className="surface border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
-          <Link href="/dashboard" className="text-sm text-slate-500 hover:text-slate-900">← Dashboard</Link>
-          <span className="text-xl font-bold text-slate-900">Kaivor</span>
+          <Link href="/dashboard" className="text-sm text-soft hover:text-brand">← Dashboard</Link>
+          <span className="text-xl font-bold text-default">Kaivor</span>
         </div>
       </nav>
 
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-slate-900 mb-3">
+          <h1 className="text-3xl font-bold text-default mb-3">
             Empieza facturando gratis.
           </h1>
-          <p className="text-slate-500 text-lg max-w-xl mx-auto">
+          <p className="text-soft text-lg max-w-xl mx-auto">
             Desbloquea IA e integraciones cuando tu negocio crezca.
           </p>
         </div>
@@ -156,7 +156,7 @@ export default function PricingPage() {
         {loading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-96 bg-slate-200 animate-pulse rounded-xl" />
+              <div key={i} className="h-96 surface-2 animate-pulse rounded-xl" />
             ))}
           </div>
         ) : (
@@ -169,12 +169,12 @@ export default function PricingPage() {
               return (
                 <div
                   key={plan.key}
-                  className={`bg-white rounded-xl border-2 p-5 flex flex-col relative ${plan.color} ${
-                    isActive ? 'ring-2 ring-violet-500 ring-offset-2' : ''
+                  className={`surface rounded-xl border-2 p-5 flex flex-col relative ${plan.color} ${
+                    isActive ? 'ring-2 ring-brand ring-offset-2' : ''
                   }`}
                 >
                   {plan.badge && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-xs px-3 py-1 rounded-full font-medium">
+                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand text-ink-900 text-xs px-3 py-1 rounded-full font-medium">
                       {plan.badge}
                     </span>
                   )}
@@ -185,23 +185,23 @@ export default function PricingPage() {
                   )}
 
                   <div className="mb-4">
-                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{plan.label}</p>
+                    <p className="text-xs font-semibold text-soft uppercase tracking-wide">{plan.label}</p>
                     <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-2xl font-bold text-slate-900">{plan.price}</span>
-                      {plan.period && <span className="text-xs text-slate-500">{plan.period}</span>}
+                      <span className="text-2xl font-bold text-default">{plan.price}</span>
+                      {plan.period && <span className="text-xs text-soft">{plan.period}</span>}
                     </div>
-                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{plan.description}</p>
+                    <p className="text-xs text-soft mt-1.5 leading-relaxed">{plan.description}</p>
                   </div>
 
                   <ul className="space-y-1.5 mb-5 flex-1">
                     {plan.features.map((f) => (
-                      <li key={f} className="flex items-start gap-1.5 text-xs text-slate-700">
+                      <li key={f} className="flex items-start gap-1.5 text-xs text-default">
                         <span className="text-emerald-500 mt-0.5 flex-shrink-0">✓</span>
                         {f}
                       </li>
                     ))}
                     {plan.missing.map((f) => (
-                      <li key={f} className="flex items-start gap-1.5 text-xs text-slate-400">
+                      <li key={f} className="flex items-start gap-1.5 text-xs text-soft">
                         <span className="mt-0.5 flex-shrink-0">✗</span>
                         {f}
                       </li>
@@ -211,7 +211,7 @@ export default function PricingPage() {
                   {isEnterprise ? (
                     <a
                       href="mailto:ventas@kaivor.io?subject=Consulta%20Enterprise"
-                      className="w-full py-2 rounded-lg text-sm font-medium text-center bg-slate-900 text-white hover:bg-slate-700 transition-colors block"
+                      className="w-full py-2 rounded-lg text-sm font-medium text-center bg-ink-900 text-white hover:bg-ink-700 transition-colors block"
                     >
                       {plan.cta}
                     </a>
@@ -221,10 +221,10 @@ export default function PricingPage() {
                       onClick={() => !isActive && !isEnterprise && changePlan(plan.key)}
                       className={`w-full py-2 rounded-lg text-sm font-medium transition-colors ${
                         isActive
-                          ? 'bg-slate-100 text-slate-400 cursor-default'
+                          ? 'surface-2 text-soft cursor-default'
                           : plan.key === 'PRO_AI'
-                          ? 'bg-violet-600 text-white hover:bg-violet-700'
-                          : 'bg-slate-900 text-white hover:bg-slate-700'
+                          ? 'bg-brand text-ink-900 hover:bg-brand-300 font-semibold'
+                          : 'bg-ink-900 text-white hover:bg-ink-700'
                       }`}
                     >
                       {isLoading ? 'Cambiando...' : isActive ? 'Plan actual' : plan.cta}
@@ -236,7 +236,7 @@ export default function PricingPage() {
           </div>
         )}
 
-        <p className="text-center text-xs text-slate-400 mt-8">
+        <p className="text-center text-xs text-soft mt-8">
           Todos los planes incluyen facturación electrónica básica. Sin contratos. Cancela cuando quieras.
         </p>
       </main>

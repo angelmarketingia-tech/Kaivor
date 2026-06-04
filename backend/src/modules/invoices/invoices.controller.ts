@@ -26,9 +26,14 @@ export class InvoicesController {
   async getInvoices(
     @Request() req: any,
     @Query('companyId') companyId?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     // tenantId siempre viene del JWT — nunca del cliente
-    return this.invoicesService.getInvoices(req.user.tenantId, companyId);
+    return this.invoicesService.getInvoices(req.user.tenantId, companyId, {
+      limit: limit !== undefined ? parseInt(limit, 10) : undefined,
+      offset: offset !== undefined ? parseInt(offset, 10) : undefined,
+    });
   }
 
   @Get(':id')
@@ -54,14 +59,10 @@ export class InvoicesController {
     return this.invoicesService.updateInvoiceStatus(id, status, req.user.tenantId);
   }
 
-  @Patch(':id/dian')
-  async updateDianStatus(
-    @Request() req: any,
-    @Param('id') id: string,
-    @Body() data: any,
-  ) {
-    return this.invoicesService.updateDianStatus(id, data.dianStatus, req.user.tenantId, data.dianCude);
-  }
+  // NOTA DE SEGURIDAD: el endpoint cliente-escribible PATCH /:id/dian fue ELIMINADO.
+  // Los campos dianStatus/dianCude/dianUuid representan el resultado oficial de la DIAN y
+  // SOLO pueden ser escritos por el servidor tras una respuesta real del proveedor tecnológico
+  // (módulo /dian). Permitir que el cliente los estampe habilitaba fraude fiscal (CUFE falso).
 
   @Post(':id/send-whatsapp')
   async sendWhatsapp(@Request() req: any, @Param('id') id: string, @Body() body: any) {

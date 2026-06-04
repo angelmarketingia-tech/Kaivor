@@ -1,23 +1,49 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
 @Injectable()
 export class AutomationsService {
   constructor(private prisma: PrismaService) {}
 
-  list(tenantId: string) {
-    return this.prisma.automation.findMany({
+  async list(tenantId: string) {
+    const rows = await this.prisma.automation.findMany({
       where: { tenantId },
       orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { runs: true } } },
+      include: {
+        runs: { orderBy: { createdAt: 'desc' }, take: 4 },
+        _count: { select: { runs: true } },
+      },
     });
+    // La UI lee actions[] (plural) y runs[]; el modelo guarda action (singular string).
+    return rows.map((a) => ({
+      id: a.id,
+      name: a.name,
+      trigger: a.trigger,
+      action: a.action,
+      actions: a.action ? [a.action] : [],
+      config: a.config,
+      status: a.status,
+      lastRunAt: a.lastRunAt,
+      runCount: a._count.runs,
+      runs: (a.runs || []).map((r: any) => ({
+        id: r.id,
+        status: r.status,
+        result: r.result ?? null,
+        createdAt: r.createdAt,
+      })),
+      createdAt: a.createdAt,
+    }));
   }
 
   create(tenantId: string, data: any) {
+    const name = typeof data?.name === 'string' ? data.name.trim() : '';
+    if (!name) throw new BadRequestException('El nombre de la automatización es requerido');
+    if (!data?.trigger) throw new BadRequestException('El disparador (trigger) es requerido');
+    if (!data?.action) throw new BadRequestException('La acción es requerida');
     return this.prisma.automation.create({
       data: {
         tenantId,
-        name: data.name,
+        name,
         trigger: data.trigger,
         action: data.action,
         config: data.config || {},
@@ -28,11 +54,13 @@ export class AutomationsService {
 
   async update(tenantId: string, id: string, data: any) {
     const a = await this.prisma.automation.findFirst({ where: { id, tenantId } });
-    if (!a) return null;
-    return this.prisma.automation.update({
-      where: { id },
-      data: { name: data.name, status: data.status, config: data.config, trigger: data.trigger, action: data.action },
-    });
+    if (!a) throw new NotFoundException('Automatización no encontrada');
+    // Whitelist: solo actualizar campos provistos.
+    const update: any = {};
+    for (const k of ['name', 'status', 'config', 'trigger', 'action']) {
+      if (data[k] !== undefined) update[k] = data[k];
+    }
+    return this.prisma.automation.update({ where: { id }, data: update });
   }
 
   async remove(tenantId: string, id: string) {
@@ -44,7 +72,7 @@ export class AutomationsService {
 
   async run(tenantId: string, id: string) {
     const a = await this.prisma.automation.findFirst({ where: { id, tenantId } });
-    if (!a) return { ok: false, error: 'No encontrada' };
+    if (!a) throw new NotFoundException('Automatización no encontrada');
 
     let result: any = {};
     try {

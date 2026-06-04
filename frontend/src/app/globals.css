@@ -8,25 +8,60 @@
 }
 .animate-slide-up { animation: slide-up 0.2s ease-out; }
 
+/* ── Daptux brand theme tokens ─────────────────────────────────────────────
+   Semantic surfaces so components can theme light/dark from one place.
+   Brand: lime #A3CC39 · ink/navy #0B1220 */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 0 0% 3.6%;
-  --card: 0 0% 100%;
-  --card-foreground: 0 0% 3.6%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 0 0% 3.6%;
-  --muted: 0 0% 96.1%;
-  --muted-foreground: 0 0% 45.1%;
-  --accent: 0 0% 9.0%;
-  --accent-foreground: 0 0% 100%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 0 0% 100%;
-  --border: 0 0% 89.8%;
-  --input: 0 0% 89.8%;
-  --ring: 0 0% 3.6%;
-  --radius: 0.5rem;
+  --brand: #A3CC39;
+  --brand-strong: #8FB82E;
+
+  /* light theme (default) */
+  --bg: #F5F7FA;          /* app background */
+  --surface: #FFFFFF;     /* cards / panels */
+  --surface-2: #F8FAFC;   /* subtle inset */
+  --border: #E6EBF2;
+  --text: #0B1220;        /* primary text */
+  --text-muted: #5B6678;  /* secondary text */
+  --sidebar-bg: #0B1220;  /* sidebar stays dark in both themes for brand authority */
+  --sidebar-text: #C8D2E0;
+  --sidebar-active-bg: rgba(163, 204, 57, 0.14);
+  --sidebar-active-text: #A3CC39;
+
+  --radius: 0.75rem;
+}
+
+.dark {
+  --bg: #070C16;
+  --surface: #0E1626;
+  --surface-2: #111A2B;
+  --border: #1E2A40;
+  --text: #E8EDF5;
+  --text-muted: #8B98AE;
+  --sidebar-bg: #070C16;
+  --sidebar-text: #9CABC2;
+  --sidebar-active-bg: rgba(163, 204, 57, 0.16);
+  --sidebar-active-text: #BDDD6B;
 }
 
 body {
   @apply antialiased;
+  background-color: var(--bg);
+  color: var(--text);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
+
+/* Semantic helpers — adopt incrementally across pages. */
+.app-bg       { background-color: var(--bg); }
+.surface      { background-color: var(--surface); border-color: var(--border); }
+.surface-2    { background-color: var(--surface-2); }
+.text-default { color: var(--text); }
+.text-soft    { color: var(--text-muted); }
+.border-default { border-color: var(--border); }
+.divide-default > * + * { border-color: var(--border); }
+.hover-surface-2:hover { background-color: var(--surface-2); }
+.bg-brand     { background-color: var(--brand); }
+.text-brand   { color: var(--brand); }
+.ring-brand   { --tw-ring-color: var(--brand); }
+
+/* Scrollbar polish */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }

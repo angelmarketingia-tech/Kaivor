@@ -78,6 +78,10 @@ export class InventoryService {
 
   async ask(tenantId: string, question: string, plan: string) {
     const q = (question || '').toLowerCase();
+    // Token-based matching so 'agotar' synonyms are caught without false substring hits
+    const tokens = q.split(/[^a-záéíóúñ]+/i).filter(Boolean);
+    const hasToken = (...words: string[]) =>
+      words.some((w) => tokens.some((t) => t === w || t.startsWith(w)));
     const rows = await this.prisma.inventory.findMany({
       where: { tenantId },
       include: { product: { select: { name: true, sku: true } } },
@@ -98,7 +102,10 @@ export class InventoryService {
         teaser: false,
       };
     }
-    if (q.includes('stock bajo') || q.includes('reponer') || q.includes('reorden')) {
+    if (
+      q.includes('stock bajo') ||
+      hasToken('reponer', 'reorden', 'agotarse', 'agotar', 'agotando', 'agotandose', 'agotándose')
+    ) {
       const low = tracked.filter((p) => p.qty > 0 && p.qty <= p.reorder);
       return {
         answer: low.length
@@ -124,8 +131,8 @@ export class InventoryService {
       });
       if (!top.length) return { answer: 'Aún no hay ventas registradas para calcular los más vendidos.', teaser: false };
       const names = await Promise.all(
-        top.map(async (t) => {
-          const p = await this.prisma.product.findUnique({ where: { id: t.productId }, select: { name: true } });
+        top.filter((t) => t.productId).map(async (t) => {
+          const p = await this.prisma.product.findUnique({ where: { id: t.productId as string }, select: { name: true } });
           return `${p?.name || t.productId} (${Number(t._sum.quantity)} und)`;
         }),
       );

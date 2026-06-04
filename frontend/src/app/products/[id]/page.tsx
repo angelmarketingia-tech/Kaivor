@@ -29,6 +29,10 @@ export default function ProductDetailPage() {
   const [adjNotes, setAdjNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  // Editar / eliminar producto
+  const [editing, setEditing] = useState(false);
+  const [edit, setEdit] = useState<any>({});
+  const [deleting, setDeleting] = useState(false);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : '';
   const headers = { Authorization: `Bearer ${token}` };
@@ -66,6 +70,49 @@ export default function ProductDetailPage() {
       setAdjusting(false); setAdjNotes('');
       await load();
     } catch { showToast('No pudimos ajustar el stock.', 'err'); }
+    finally { setSaving(false); }
+  };
+
+  const openEdit = () => {
+    const p = data.product;
+    setEdit({
+      name: p.name ?? '', sku: p.sku ?? '', category: p.category ?? '',
+      price: String(p.price ?? ''), cost: p.cost != null ? String(p.cost) : '',
+      barcode: p.barcode ?? '', unit: p.unit ?? 'u', isActive: p.isActive !== false,
+    });
+    setEditing(true);
+  };
+
+  const saveEdit = async () => {
+    if (!edit.name?.trim()) { showToast('El nombre es obligatorio.', 'err'); return; }
+    if (edit.price === '' || isNaN(Number(edit.price)) || Number(edit.price) < 0) { showToast('Precio inválido.', 'err'); return; }
+    setSaving(true);
+    try {
+      await axios.patch(`${API}/products/${id}`, {
+        name: edit.name, sku: edit.sku, category: edit.category || null,
+        price: edit.price, cost: edit.cost, barcode: edit.barcode || null,
+        unit: edit.unit, isActive: edit.isActive,
+      }, { headers });
+      showToast('Producto actualizado.', 'ok');
+      setEditing(false);
+      await load();
+    } catch (e: any) { showToast(e.response?.data?.message || 'No pudimos guardar los cambios.', 'err'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async () => {
+    setSaving(true);
+    try {
+      const res = await axios.delete(`${API}/products/${id}`, { headers });
+      if (res.data?.softDeleted) {
+        showToast('El producto tiene ventas; se desactivó para conservar el histórico.', 'ok');
+        setDeleting(false);
+        await load();
+      } else {
+        showToast('Producto eliminado.', 'ok');
+        setTimeout(() => router.push('/products'), 600);
+      }
+    } catch (e: any) { showToast(e.response?.data?.message || 'No pudimos eliminar el producto.', 'err'); }
     finally { setSaving(false); }
   };
 
@@ -125,7 +172,10 @@ export default function ProductDetailPage() {
         <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{product.name}</h1>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl font-bold text-slate-900">{product.name}</h1>
+                {product.isActive === false && <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full">Inactivo</span>}
+              </div>
               <p className="text-sm text-slate-500 mt-0.5">SKU: {product.sku}</p>
               {product.category && <p className="text-sm text-slate-500">Categoría: {product.category}</p>}
               {product.barcode && <p className="text-sm text-slate-500">Código de barras: {product.barcode}</p>}
@@ -134,6 +184,16 @@ export default function ProductDetailPage() {
               <p className="text-2xl font-bold text-slate-900">{fmt(product.price)}</p>
               {product.cost != null && <p className="text-sm text-slate-500">Costo: {fmt(product.cost)}</p>}
             </div>
+          </div>
+          <div className="flex gap-2 mt-4 pt-4 border-t border-slate-100">
+            <button onClick={openEdit}
+              className="text-xs font-medium bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">
+              Editar producto
+            </button>
+            <button onClick={() => setDeleting(true)}
+              className="text-xs font-medium border border-red-200 text-red-600 px-3 py-1.5 rounded-lg hover:bg-red-50">
+              Eliminar
+            </button>
           </div>
         </div>
 
@@ -229,6 +289,94 @@ export default function ProductDetailPage() {
                   {saving ? 'Guardando…' : 'Guardar'}
                 </button>
                 <button onClick={() => setAdjusting(false)}
+                  className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Edit modal */}
+        {editing && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => !saving && setEditing(false)}>
+            <div className="bg-white rounded-xl p-5 max-w-md w-full max-h-[88vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <h3 className="text-base font-semibold text-slate-900 mb-4">Editar producto</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-slate-500 block mb-1">Nombre *</label>
+                  <input value={edit.name} onChange={e => setEdit({ ...edit, name: e.target.value })}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">SKU</label>
+                    <input value={edit.sku} onChange={e => setEdit({ ...edit, sku: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Categoría</label>
+                    <input value={edit.category} onChange={e => setEdit({ ...edit, category: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Precio de venta *</label>
+                    <input type="number" min={0} value={edit.price} onChange={e => setEdit({ ...edit, price: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Costo</label>
+                    <input type="number" min={0} value={edit.cost} onChange={e => setEdit({ ...edit, cost: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Código de barras</label>
+                    <input value={edit.barcode} onChange={e => setEdit({ ...edit, barcode: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-500 block mb-1">Unidad</label>
+                    <input value={edit.unit} onChange={e => setEdit({ ...edit, unit: e.target.value })}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={!!edit.isActive} onChange={e => setEdit({ ...edit, isActive: e.target.checked })} />
+                  <span className="text-sm text-slate-700">Producto activo (visible en el POS)</span>
+                </label>
+              </div>
+              <div className="flex gap-2 mt-5">
+                <button onClick={saveEdit} disabled={saving}
+                  className="flex-1 bg-brand text-ink-900 py-2 rounded-lg text-sm font-semibold hover:bg-brand-300 disabled:opacity-50">
+                  {saving ? 'Guardando…' : 'Guardar cambios'}
+                </button>
+                <button onClick={() => setEditing(false)}
+                  className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete confirm */}
+        {deleting && (
+          <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => !saving && setDeleting(false)}>
+            <div className="bg-white rounded-xl p-5 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+              <h3 className="text-base font-semibold text-slate-900 mb-1">¿Eliminar "{product.name}"?</h3>
+              <p className="text-sm text-slate-500 mb-4">
+                Si el producto ya tiene ventas registradas, se desactivará para conservar el histórico de facturas. Si no, se eliminará por completo.
+              </p>
+              <div className="flex gap-2">
+                <button onClick={handleDelete} disabled={saving}
+                  className="flex-1 bg-red-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-red-700 disabled:opacity-50">
+                  {saving ? 'Procesando…' : 'Sí, eliminar'}
+                </button>
+                <button onClick={() => setDeleting(false)}
                   className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
                   Cancelar
                 </button>

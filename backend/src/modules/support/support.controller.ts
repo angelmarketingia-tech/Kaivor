@@ -14,6 +14,6 @@ export class SupportController {
 
   @Post('tickets')
   create(@Request() req: any, @Body() body: any) {
-    return this.support.create(req.user.tenantId, req.user.userId, req.user.email, body);
+    return this.support.create(req.user.tenantId, req.user.userId, req.user.email, body, req.user.name);
   }
 }

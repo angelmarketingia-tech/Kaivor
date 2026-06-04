@@ -67,36 +67,36 @@ export default function InventoryPage() {
     <AppLayout>
       <div className="p-4 sm:p-6 max-w-3xl mx-auto">
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">Inventario</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Alertas de stock y consultas inteligentes.</p>
+          <h1 className="text-2xl font-bold text-default">Inventario</h1>
+          <p className="text-sm text-soft mt-0.5">Alertas de stock y consultas inteligentes.</p>
         </div>
 
         {/* AI ask */}
-        <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-xl border border-violet-100 p-5 mb-5">
-          <h2 className="text-sm font-semibold text-violet-900 mb-2">✦ Preguntar a Kaivor AI</h2>
+        <div className="rounded-xl border p-5 mb-5" style={{ background: 'linear-gradient(135deg, rgba(163,204,57,0.12), rgba(11,18,32,0.04))', borderColor: 'rgba(163,204,57,0.22)' }}>
+          <h2 className="text-sm font-semibold text-brand mb-2">✦ Preguntar a Kaivor AI</h2>
           <div className="flex gap-2 mb-3">
             <input type="text" value={question} onChange={e => setQuestion(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && ask()}
               placeholder="Ej: ¿qué productos debo reponer?"
-              className="flex-1 border border-violet-200 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-violet-400" />
+              className="flex-1 surface border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 ring-brand" />
             <button onClick={() => ask()} disabled={asking || !question.trim()}
-              className="bg-violet-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-700 disabled:opacity-40">
+              className="bg-brand text-ink-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-brand-300 disabled:opacity-40">
               {asking ? '…' : 'Preguntar'}
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
             {SUGGESTED.map(s => (
               <button key={s} onClick={() => ask(s)}
-                className="text-xs bg-white text-violet-700 border border-violet-200 px-2.5 py-1 rounded-full hover:bg-violet-50">
+                className="text-xs surface text-brand border px-2.5 py-1 rounded-full hover:bg-[var(--surface-2)]">
                 {s}
               </button>
             ))}
           </div>
           {answer && (
-            <div className={`mt-3 rounded-lg px-4 py-3 ${answer.teaser ? 'bg-amber-50 border border-amber-100' : 'bg-white border border-violet-100'}`}>
-              <p className={`text-sm ${answer.teaser ? 'text-amber-800' : 'text-slate-700'} leading-relaxed`}>{answer.text}</p>
+            <div className={`mt-3 rounded-lg px-4 py-3 ${answer.teaser ? 'bg-amber-50 border border-amber-100' : 'surface border'}`}>
+              <p className={`text-sm ${answer.teaser ? 'text-amber-800' : 'text-default'} leading-relaxed`}>{answer.text}</p>
               {answer.teaser && (
-                <Link href="/pricing" className="text-xs text-violet-600 font-medium hover:underline mt-1 inline-block">
+                <Link href="/pricing" className="text-xs text-brand font-medium hover:underline mt-1 inline-block">
                   Ver planes con IA →
                 </Link>
               )}
@@ -109,51 +109,51 @@ export default function InventoryPage() {
           <LoadError onRetry={load} />
         ) : loading ? (
           <div className="space-y-2">
-            {[...Array(3)].map((_, i) => <div key={i} className="h-16 bg-slate-100 animate-pulse rounded-xl" />)}
+            {[...Array(3)].map((_, i) => <div key={i} className="h-16 surface-2 animate-pulse rounded-xl" />)}
           </div>
         ) : (
           <>
             {summary && (
               <div className="grid grid-cols-3 gap-3 mb-4">
-                <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+                <div className="surface rounded-xl border p-3 text-center">
                   <p className="text-lg font-bold text-red-600">{summary.outOfStock}</p>
-                  <p className="text-xs text-slate-500">Sin stock</p>
+                  <p className="text-xs text-soft">Sin stock</p>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
+                <div className="surface rounded-xl border p-3 text-center">
                   <p className="text-lg font-bold text-amber-600">{summary.lowStock}</p>
-                  <p className="text-xs text-slate-500">Stock bajo</p>
+                  <p className="text-xs text-soft">Stock bajo</p>
                 </div>
-                <div className="bg-white rounded-xl border border-slate-200 p-3 text-center">
-                  <p className="text-lg font-bold text-slate-900">{summary.trackedProducts}</p>
-                  <p className="text-xs text-slate-500">Productos seguidos</p>
+                <div className="surface rounded-xl border p-3 text-center">
+                  <p className="text-lg font-bold text-default">{summary.trackedProducts}</p>
+                  <p className="text-xs text-soft">Productos seguidos</p>
                 </div>
               </div>
             )}
 
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <h2 className="text-sm font-semibold text-slate-700">Alertas de inventario</h2>
+            <div className="surface rounded-xl border overflow-hidden">
+              <div className="px-5 py-3 border-b border-default">
+                <h2 className="text-sm font-semibold text-default">Alertas de inventario</h2>
               </div>
               {alerts.length === 0 ? (
                 <div className="text-center py-10 px-6">
                   <div className="text-3xl mb-2">✓</div>
-                  <p className="text-sm text-slate-600 font-medium">Todo en orden</p>
-                  <p className="text-xs text-slate-400 mt-0.5">
+                  <p className="text-sm text-default font-medium">Todo en orden</p>
+                  <p className="text-xs text-soft mt-0.5">
                     {summary?.trackedProducts === 0
                       ? 'Aún no hay productos con inventario. Configúralo desde el detalle de cada producto.'
                       : 'Ningún producto tiene stock bajo o agotado.'}
                   </p>
                 </div>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-[var(--border)]">
                   {alerts.map((a, i) => (
                     <Link key={i} href={`/products/${a.productId}`}
-                      className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50">
+                      className="flex items-center justify-between px-5 py-3.5 hover:bg-[var(--surface-2)]">
                       <div className="flex items-center gap-3">
                         <span className={`w-2 h-2 rounded-full ${a.severity === 'high' ? 'bg-red-500' : 'bg-amber-500'}`} />
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{a.productName}</p>
-                          <p className="text-xs text-slate-500">{a.message}</p>
+                          <p className="text-sm font-medium text-default">{a.productName}</p>
+                          <p className="text-xs text-soft">{a.message}</p>
                         </div>
                       </div>
                       <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${a.type === 'out_of_stock' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>

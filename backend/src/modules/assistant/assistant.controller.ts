@@ -2,9 +2,11 @@ import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AssistantService } from './assistant.service';
 import { PrismaService } from '@/prisma/prisma.service';
+import { PermissionsGuard, RequirePermissions } from '@/common/permissions.guard';
 
 @Controller('assistant')
-@UseGuards(AuthGuard('jwt'))
+@UseGuards(AuthGuard('jwt'), PermissionsGuard)
+@RequirePermissions('ai.use')
 export class AssistantController {
   constructor(private assistant: AssistantService, private prisma: PrismaService) {}
 

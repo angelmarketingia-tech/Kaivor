@@ -32,6 +32,9 @@ import { SuppliersModule } from './modules/suppliers/suppliers.module';
 import { SupportModule } from './modules/support/support.module';
 import { DianModule } from './modules/dian/dian.module';
 import { WhatsappAgentModule } from './modules/whatsapp-agent/whatsapp-agent.module';
+import { PosModule } from './modules/pos/pos.module';
+import { AppointmentsModule } from './modules/appointments/appointments.module';
+import { TablesModule } from './modules/tables/tables.module';
 
 @Module({
   imports: [
@@ -73,6 +76,9 @@ import { WhatsappAgentModule } from './modules/whatsapp-agent/whatsapp-agent.mod
     SupportModule,
     DianModule,
     WhatsappAgentModule,
+    PosModule,
+    AppointmentsModule,
+    TablesModule,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },

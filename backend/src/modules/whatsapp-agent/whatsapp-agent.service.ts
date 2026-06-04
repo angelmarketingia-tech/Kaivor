@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import * as crypto from 'crypto';
 import OpenAI from 'openai';
 import { PrismaService } from '@/prisma/prisma.service';
 import { encrypt, decrypt } from '@/common/crypto.util';
@@ -17,6 +18,7 @@ export class WhatsappAgentService {
     if (!cfg) {
       cfg = await this.prisma.whatsappAgentConfig.create({ data: { tenantId } });
     }
+    const apiBase = process.env.PUBLIC_API_URL || 'https://kaivor-api.vercel.app';
     return {
       enabled: cfg.enabled,
       agentName: cfg.agentName,
@@ -31,15 +33,67 @@ export class WhatsappAgentService {
       hasAccessToken: !!cfg.metaAccessTokenEnc,
       hasAppSecret: !!cfg.metaAppSecretEnc,
       metaWebhookVerifyToken: cfg.metaWebhookVerifyToken,
+      // Setup helpers — what the user needs to paste in Meta's dashboard
+      tenantId,
+      webhookCallbackUrl: `${apiBase}/webhooks/whatsapp/${tenantId}`,
     };
+  }
+
+  /**
+   * Pings Meta Graph API with the saved credentials to confirm they work.
+   * Returns the phone number's verified name and display number so user knows it's the right one.
+   */
+  async validateMetaCredentials(tenantId: string) {
+    const cfg = await this.prisma.whatsappAgentConfig.findUnique({ where: { tenantId } });
+    if (!cfg) return { ok: false, error: 'No hay configuración guardada' };
+    if (!cfg.metaPhoneNumberId) return { ok: false, error: 'Falta metaPhoneNumberId' };
+    if (!cfg.metaAccessTokenEnc) return { ok: false, error: 'Falta access token' };
+
+    let token: string;
+    try {
+      token = decrypt(cfg.metaAccessTokenEnc);
+    } catch {
+      return { ok: false, error: 'No se pudo descifrar el access token (probablemente fue guardado con una clave de cifrado distinta).' };
+    }
+
+    try {
+      const res = await fetch(
+        `https://graph.facebook.com/v18.0/${cfg.metaPhoneNumberId}?fields=verified_name,display_phone_number,quality_rating`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data: any = await res.json();
+      if (!res.ok) {
+        return {
+          ok: false,
+          error: data?.error?.message || `Meta respondió HTTP ${res.status}`,
+          metaErrorCode: data?.error?.code,
+          metaErrorType: data?.error?.type,
+        };
+      }
+      return {
+        ok: true,
+        verifiedName: data.verified_name,
+        displayPhoneNumber: data.display_phone_number,
+        qualityRating: data.quality_rating,
+      };
+    } catch (e: any) {
+      return { ok: false, error: `No se pudo contactar a Meta: ${e.message}` };
+    }
   }
 
   async updateConfig(tenantId: string, data: any) {
     const update: any = {};
     const allowed = ['enabled', 'agentName', 'systemPrompt', 'model', 'temperature', 'monthlyMessageLimit', 'metaPhoneNumberId', 'metaWabaId', 'metaWebhookVerifyToken'];
     for (const k of allowed) if (data[k] !== undefined) update[k] = data[k];
-    if (data.metaAccessToken && data.metaAccessToken !== '***') update.metaAccessTokenEnc = encrypt(data.metaAccessToken);
-    if (data.metaAppSecret && data.metaAppSecret !== '***') update.metaAppSecretEnc = encrypt(data.metaAppSecret);
+
+    // Encrypted secrets: a non-empty value sets it; null OR empty string CLEARS it (rotate-off a
+    // leaked credential); '***' is the masked placeholder from the UI and means "leave unchanged".
+    if (data.metaAccessToken !== undefined && data.metaAccessToken !== '***') {
+      update.metaAccessTokenEnc = data.metaAccessToken ? encrypt(data.metaAccessToken) : null;
+    }
+    if (data.metaAppSecret !== undefined && data.metaAppSecret !== '***') {
+      update.metaAppSecretEnc = data.metaAppSecret ? encrypt(data.metaAppSecret) : null;
+    }
 
     await this.prisma.whatsappAgentConfig.upsert({
       where: { tenantId },
@@ -61,9 +115,37 @@ export class WhatsappAgentService {
 
   // ── Webhook ingest (POST from Meta) ──
 
-  async ingestWebhook(tenantId: string, body: any) {
+  async ingestWebhook(tenantId: string, body: any, rawBody?: Buffer, signatureHeader?: string) {
     const cfg = await this.prisma.whatsappAgentConfig.findUnique({ where: { tenantId } });
     if (!cfg || !cfg.enabled) return { ok: true, skipped: 'agent_disabled' };
+
+    // ── HMAC signature verification (fail-closed) ──
+    // The agent is enabled; an app secret MUST be configured so we can verify
+    // X-Hub-Signature-256. If none is configured, reject instead of processing
+    // an unsigned (spoofable) webhook.
+    if (!cfg.metaAppSecretEnc) {
+      this.logger.warn(`[${tenantId}] webhook rejected: no app secret configured (fail-closed)`);
+      return { ok: false, error: 'signature_required' };
+    }
+    if (!rawBody || !signatureHeader) {
+      this.logger.warn(`[${tenantId}] webhook rejected: missing signature or raw body`);
+      return { ok: false, error: 'signature_required' };
+    }
+    let appSecret: string;
+    try {
+      appSecret = decrypt(cfg.metaAppSecretEnc);
+    } catch {
+      this.logger.error(`[${tenantId}] cannot decrypt app secret`);
+      return { ok: false, error: 'app_secret_decrypt_failed' };
+    }
+    const expected = 'sha256=' + crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
+    // Use constant-time comparison
+    const a = Buffer.from(signatureHeader);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+      this.logger.warn(`[${tenantId}] webhook rejected: invalid signature`);
+      return { ok: false, error: 'invalid_signature' };
+    }
 
     // Meta payload format: { entry: [{ changes: [{ value: { messages: [...] } }] }] }
     const entries = body.entry || [];
@@ -99,7 +181,8 @@ export class WhatsappAgentService {
     const cfg = await this.prisma.whatsappAgentConfig.findUnique({ where: { tenantId } });
     if (!cfg) return { answer: '', toolCallsLog: [], error: 'agent_not_configured' };
 
-    const apiKey = process.env.DEEPSEEK_API_KEY;
+    // Strip BOM/zero-width chars that sneak in via PowerShell env exports
+    const apiKey = (process.env.DEEPSEEK_API_KEY || '').replace(/[﻿​ ]/g, '').trim();
     if (!apiKey) {
       return {
         answer: '',
@@ -163,12 +246,17 @@ export class WhatsappAgentService {
           max_tokens: 800,
         })
         .catch((err) => {
-          this.logger.error('DeepSeek error: ' + err.message);
-          return null;
+          this.logger.error('DeepSeek error: ' + err.message + ' status=' + err.status + ' code=' + err.code);
+          return { __err: err.message, __status: err.status, __code: err.code } as any;
         });
 
-      if (!completion) {
-        return { answer: '', toolCallsLog, error: 'No pudimos contactar al modelo DeepSeek. Verifica la API key.' };
+      if (!completion || (completion as any).__err) {
+        const errInfo = (completion as any) || {};
+        return {
+          answer: '',
+          toolCallsLog,
+          error: `DeepSeek falló: ${errInfo.__err || 'sin detalles'} (status=${errInfo.__status || '?'}, code=${errInfo.__code || '?'}, keyLen=${apiKey?.length || 0})`,
+        };
       }
 
       const msg = completion.choices[0].message;
@@ -184,6 +272,8 @@ export class WhatsappAgentService {
             userId,
             phoneNumber,
             conversationId,
+            // Financial autonomy gate (defaults OFF if column/value missing).
+            allowAutoInvoice: (cfg as any).allowAutoInvoice === true,
           });
           toolCallsLog.push({ name: tc.function.name, args: callArgs, result });
           messages.push({ role: 'tool', tool_call_id: tc.id, content: result });

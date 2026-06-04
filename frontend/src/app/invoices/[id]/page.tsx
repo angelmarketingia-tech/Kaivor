@@ -18,6 +18,7 @@ interface Invoice {
   id: string; invoiceNumber: string; invoiceDate: string; status: string; paymentStatus: string;
   paymentMethod: string; cashReceived?: number; changeGiven?: number;
   subtotal: number; taxAmount: number; discountAmount: number; total: number; notes?: string;
+  tipAmount?: number; serviceCharge?: number; tableNumber?: string; professional?: string;
   dianStatus?: string; dianCude?: string;
   customer: { id: string; name: string; email?: string; phone?: string; taxId?: string };
   company: { name: string; taxId: string; address?: string; phone?: string };
@@ -49,7 +50,8 @@ const DEFAULT_BRANDING: Branding = {
 };
 
 const PAYMENT_LABELS: Record<string, string> = { cash: 'Efectivo', card: 'Tarjeta', bank_transfer: 'Transferencia', wallet: 'Wallet' };
-const STATUS_CLS: Record<string, string> = { sent: 'bg-blue-100 text-blue-700', accepted: 'bg-emerald-100 text-emerald-700', draft: 'bg-slate-100 text-slate-600', rejected: 'bg-red-100 text-red-700', cancelled: 'bg-slate-100 text-slate-400' };
+const STATUS_CLS: Record<string, string> = { sent: 'bg-blue-100 text-blue-700', accepted: 'bg-emerald-100 text-emerald-700', draft: 'bg-slate-100 text-slate-600', rejected: 'bg-red-100 text-red-700', cancelled: 'bg-slate-100 text-slate-400', pending_validation: 'bg-amber-100 text-amber-700' };
+const STATUS_LABELS: Record<string, string> = { sent: 'Emitida', pending_validation: 'Pendiente validación' };
 const PAY_CLS: Record<string, string> = { paid: 'bg-emerald-100 text-emerald-700', unpaid: 'bg-amber-100 text-amber-700', partial: 'bg-blue-100 text-blue-700' };
 const PAY_LABELS: Record<string, string> = { paid: 'Pagada', unpaid: 'Sin pagar', partial: 'Pago parcial' };
 const LOGO_PX: Record<string, number> = { small: 40, medium: 64, large: 96 };
@@ -84,6 +86,8 @@ function generateReceiptHTML(inv: Invoice, paperSize: string, b: Branding): stri
     <div class="bold">FACTURA ${inv.invoiceNumber}</div>
     <div style="font-size:8px">${fmtDate(inv.invoiceDate)}</div>
     ${inv.user ? `<div style="font-size:8px">Cajero: ${inv.user.name}</div>` : ''}
+    ${inv.tableNumber ? `<div style="font-size:8px">Mesa: ${inv.tableNumber}</div>` : ''}
+    ${inv.professional ? `<div style="font-size:8px">Atendió: ${inv.professional}</div>` : ''}
     <div class="divider"></div>
     <div style="font-size:8px">Cliente: ${inv.customer.name}</div>
     ${inv.customer.taxId ? `<div style="font-size:8px">Doc: ${inv.customer.taxId}</div>` : ''}
@@ -101,6 +105,8 @@ function generateReceiptHTML(inv: Invoice, paperSize: string, b: Branding): stri
     <div style="display:flex;justify-content:space-between"><span>Subtotal</span><span>${fmt(inv.subtotal)}</span></div>
     ${inv.discountAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>Descuento</span><span>-${fmt(inv.discountAmount)}</span></div>` : ''}
     ${inv.taxAmount > 0 ? `<div style="display:flex;justify-content:space-between"><span>IVA</span><span>${fmt(inv.taxAmount)}</span></div>` : ''}
+    ${(inv.serviceCharge ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between"><span>Servicio</span><span>${fmt(inv.serviceCharge!)}</span></div>` : ''}
+    ${(inv.tipAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between"><span>Propina</span><span>${fmt(inv.tipAmount!)}</span></div>` : ''}
     <div class="divider"></div>
     <div style="display:flex;justify-content:space-between" class="bold"><span style="font-size:11px">TOTAL</span><span style="font-size:11px">${fmt(inv.total)}</span></div>
     <div class="divider"></div>
@@ -181,6 +187,8 @@ function generateInvoicePDF(inv: Invoice, b: Branding): string {
         <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="color:#64748b">Subtotal</span><span>${fmt(inv.subtotal)}</span></div>
         ${inv.discountAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:#16a34a;margin-bottom:6px"><span>Descuento</span><span>-${fmt(inv.discountAmount)}</span></div>` : ''}
         ${inv.taxAmount > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="color:#64748b">IVA</span><span>${fmt(inv.taxAmount)}</span></div>` : ''}
+        ${(inv.serviceCharge ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="color:#64748b">Servicio</span><span>${fmt(inv.serviceCharge!)}</span></div>` : ''}
+        ${(inv.tipAmount ?? 0) > 0 ? `<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px"><span style="color:#64748b">Propina</span><span>${fmt(inv.tipAmount!)}</span></div>` : ''}
         <div style="display:flex;justify-content:space-between;font-size:16px;font-weight:900;border-top:2px solid #e2e8f0;padding-top:8px;margin-top:8px"><span>TOTAL</span><span style="color:${color}">${fmt(inv.total)}</span></div>
       </div>
     </div>
@@ -267,7 +275,7 @@ export default function InvoiceDetailPage() {
   if (loading) return (
     <AppLayout>
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-default border-t-brand rounded-full animate-spin" />
       </div>
     </AppLayout>
   );
@@ -275,19 +283,19 @@ export default function InvoiceDetailPage() {
   if (error) return (
     <AppLayout>
       <div className="p-6 max-w-md mx-auto mt-16 text-center">
-        <div className="bg-white rounded-xl border border-slate-200 p-8">
+        <div className="surface rounded-xl border p-8">
           <div className="text-4xl mb-3">{error.kind === 'notfound' ? '🔍' : '⚠️'}</div>
-          <h2 className="text-lg font-bold text-slate-900 mb-1">
+          <h2 className="text-lg font-bold text-default mb-1">
             {error.kind === 'notfound' ? 'Factura no encontrada' : 'No pudimos cargar la factura'}
           </h2>
-          <p className="text-sm text-slate-500 mb-5">{error.msg}</p>
+          <p className="text-sm text-soft mb-5">{error.msg}</p>
           <div className="flex gap-2 justify-center">
             {error.kind === 'fail' && (
-              <button onClick={load} className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700">
+              <button onClick={load} className="bg-ink-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-ink-700">
                 Reintentar
               </button>
             )}
-            <Link href="/invoices" className="border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50">
+            <Link href="/invoices" className="border border-default text-default px-4 py-2 rounded-lg text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5">
               Volver a facturas
             </Link>
           </div>
@@ -306,33 +314,33 @@ export default function InvoiceDetailPage() {
       <div className="p-4 sm:p-6 max-w-4xl mx-auto">
         {/* Breadcrumb */}
         <div className="flex items-center gap-2 mb-4 text-sm">
-          <Link href="/invoices" className="text-slate-500 hover:text-slate-900">Facturas</Link>
-          <span className="text-slate-300">/</span>
-          <span className="text-slate-900 font-medium">{invoice.invoiceNumber}</span>
+          <Link href="/invoices" className="text-soft hover:text-default">Facturas</Link>
+          <span className="text-soft">/</span>
+          <span className="text-default font-medium">{invoice.invoiceNumber}</span>
         </div>
 
         {/* Header */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
+        <div className="surface rounded-xl border p-5 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">{invoice.invoiceNumber}</h1>
-              <p className="text-sm text-slate-500 mt-0.5">{fmtDate(invoice.invoiceDate)}</p>
+              <h1 className="text-2xl font-bold text-default">{invoice.invoiceNumber}</h1>
+              <p className="text-sm text-soft mt-0.5">{fmtDate(invoice.invoiceDate)}</p>
               <div className="flex gap-2 mt-2 flex-wrap">
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${statusCls}`}>
-                  {invoice.status === 'sent' ? 'Emitida' : invoice.status}
+                  {STATUS_LABELS[invoice.status] ?? invoice.status}
                 </span>
                 <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${payCls}`}>
                   {PAY_LABELS[invoice.paymentStatus] ?? invoice.paymentStatus}
                 </span>
-                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                <span className="px-2.5 py-0.5 rounded-full text-xs font-medium surface-2 text-soft">
                   {PAYMENT_LABELS[invoice.paymentMethod] ?? invoice.paymentMethod}
                 </span>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-slate-900">{fmt(invoice.total)}</p>
+              <p className="text-3xl font-bold text-default">{fmt(invoice.total)}</p>
               {invoice.cashReceived != null && (
-                <p className="text-sm text-slate-500 mt-0.5">Recibido: {fmt(invoice.cashReceived)}</p>
+                <p className="text-sm text-soft mt-0.5">Recibido: {fmt(invoice.cashReceived)}</p>
               )}
               {(invoice.changeGiven ?? 0) > 0 && (
                 <p className="text-sm font-medium text-emerald-600">Cambio: {fmt(invoice.changeGiven!)}</p>
@@ -341,13 +349,13 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-default">
             <button onClick={printReceipt}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-900 text-white text-sm rounded-lg hover:bg-slate-700 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2 bg-ink-900 text-white text-sm rounded-lg hover:bg-ink-700 transition-colors">
               🖨 Tirilla
             </button>
             <button onClick={printInvoicePDF}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 text-sm rounded-lg hover:bg-slate-200 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2 surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
               📄 PDF
             </button>
             <button onClick={sendWhatsApp} disabled={waLoading}
@@ -355,11 +363,11 @@ export default function InvoiceDetailPage() {
               {waLoading ? '...' : '💬 WhatsApp'}
             </button>
             <button onClick={() => alert('Configura Gmail en Configuración > Integraciones para enviar por email.')}
-              className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 text-sm rounded-lg hover:bg-slate-200 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2 surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
               ✉ Email
             </button>
             <Link href="/invoices/create"
-              className="flex items-center gap-1.5 px-3 py-2 bg-violet-600 text-white text-sm rounded-lg hover:bg-violet-700 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2 bg-brand text-ink-900 text-sm rounded-lg hover:bg-brand-300 transition-colors">
               + Nueva factura
             </Link>
           </div>
@@ -376,10 +384,10 @@ export default function InvoiceDetailPage() {
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 mb-4 bg-slate-100 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 mb-4 surface-2 rounded-xl p-1 w-fit">
           {(['factura', 'tirilla', 'pagos', 'actividad'] as Tab[]).map(t => (
             <button key={t} onClick={() => setTab(t)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${tab === t ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${tab === t ? 'surface text-default shadow-sm' : 'text-soft hover:text-default'}`}>
               {t === 'factura' ? 'Factura' : t === 'tirilla' ? 'Tirilla' : t === 'pagos' ? 'Pagos' : 'Actividad'}
             </button>
           ))}
@@ -390,65 +398,67 @@ export default function InvoiceDetailPage() {
           <div className="space-y-4">
             {/* Customer + Company */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-2">Cliente</p>
-                <p className="font-semibold text-slate-900">{invoice.customer.name}</p>
-                {invoice.customer.taxId && <p className="text-sm text-slate-500">NIT/CC: {invoice.customer.taxId}</p>}
-                {invoice.customer.email && <p className="text-sm text-slate-500">{invoice.customer.email}</p>}
-                {invoice.customer.phone && <p className="text-sm text-slate-500">{invoice.customer.phone}</p>}
-                <Link href="/customers" className="text-xs text-violet-600 hover:underline mt-1 block">Ver en CRM →</Link>
+              <div className="surface rounded-xl border p-5">
+                <p className="text-xs text-soft uppercase tracking-wide font-medium mb-2">Cliente</p>
+                <p className="font-semibold text-default">{invoice.customer.name}</p>
+                {invoice.customer.taxId && <p className="text-sm text-soft">NIT/CC: {invoice.customer.taxId}</p>}
+                {invoice.customer.email && <p className="text-sm text-soft">{invoice.customer.email}</p>}
+                {invoice.customer.phone && <p className="text-sm text-soft">{invoice.customer.phone}</p>}
+                <Link href="/customers" className="text-xs text-brand hover:underline mt-1 block">Ver en CRM →</Link>
               </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-2">Empresa emisora</p>
+              <div className="surface rounded-xl border p-5">
+                <p className="text-xs text-soft uppercase tracking-wide font-medium mb-2">Empresa emisora</p>
                 {branding.showLogoOnInvoice && branding.logoData && (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img src={branding.logoData} alt="logo"
                     style={{ height: LOGO_PX[branding.logoSize] ?? 64 }}
                     className="object-contain mb-2" />
                 )}
-                <p className="font-semibold text-slate-900">{invoice.company.name}</p>
-                <p className="text-sm text-slate-500">NIT: {invoice.company.taxId}</p>
-                {invoice.company.address && <p className="text-sm text-slate-500">{invoice.company.address}</p>}
-                {invoice.company.phone && <p className="text-sm text-slate-500">{invoice.company.phone}</p>}
-                {invoice.user && <p className="text-sm text-slate-500">Cajero: {invoice.user.name}</p>}
+                <p className="font-semibold text-default">{invoice.company.name}</p>
+                <p className="text-sm text-soft">NIT: {invoice.company.taxId}</p>
+                {invoice.company.address && <p className="text-sm text-soft">{invoice.company.address}</p>}
+                {invoice.company.phone && <p className="text-sm text-soft">{invoice.company.phone}</p>}
+                {invoice.user && <p className="text-sm text-soft">Cajero: {invoice.user.name}</p>}
               </div>
             </div>
 
             {/* Items table */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+            <div className="surface rounded-xl border overflow-hidden">
               <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-100">
+                <thead className="surface-2 border-b border-default">
                   <tr>
-                    <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase">Descripción</th>
-                    <th className="text-center px-4 py-3 text-xs font-medium text-slate-500 uppercase hidden sm:table-cell">Cant</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase hidden sm:table-cell">P. Unit</th>
-                    <th className="text-right px-4 py-3 text-xs font-medium text-slate-500 uppercase hidden md:table-cell">IVA</th>
-                    <th className="text-right px-5 py-3 text-xs font-medium text-slate-500 uppercase">Total</th>
+                    <th className="text-left px-5 py-3 text-xs font-medium text-soft uppercase">Descripción</th>
+                    <th className="text-center px-4 py-3 text-xs font-medium text-soft uppercase hidden sm:table-cell">Cant</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-soft uppercase hidden sm:table-cell">P. Unit</th>
+                    <th className="text-right px-4 py-3 text-xs font-medium text-soft uppercase hidden md:table-cell">IVA</th>
+                    <th className="text-right px-5 py-3 text-xs font-medium text-soft uppercase">Total</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-default">
                   {invoice.items.map(item => (
                     <tr key={item.id}>
-                      <td className="px-5 py-3.5 text-sm text-slate-900">
+                      <td className="px-5 py-3.5 text-sm text-default">
                         {item.description}
                         {item.discountValue > 0 && <span className="ml-2 text-xs text-emerald-600">-{item.discountType === 'percent' ? `${item.discountValue}%` : fmt(item.discountValue)}</span>}
                       </td>
-                      <td className="px-4 py-3.5 text-sm text-center text-slate-600 hidden sm:table-cell">{item.quantity}</td>
-                      <td className="px-4 py-3.5 text-sm text-right text-slate-600 hidden sm:table-cell">{fmt(item.unitPrice)}</td>
-                      <td className="px-4 py-3.5 text-sm text-right text-slate-600 hidden md:table-cell">{item.taxRate}%</td>
-                      <td className="px-5 py-3.5 text-sm font-semibold text-right text-slate-900">{fmt(item.total)}</td>
+                      <td className="px-4 py-3.5 text-sm text-center text-soft hidden sm:table-cell">{item.quantity}</td>
+                      <td className="px-4 py-3.5 text-sm text-right text-soft hidden sm:table-cell">{fmt(item.unitPrice)}</td>
+                      <td className="px-4 py-3.5 text-sm text-right text-soft hidden md:table-cell">{item.taxRate}%</td>
+                      <td className="px-5 py-3.5 text-sm font-semibold text-right text-default">{fmt(item.total)}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
               {/* Totals */}
-              <div className="border-t border-slate-100 px-5 py-4">
+              <div className="border-t border-default px-5 py-4">
                 <div className="flex justify-end">
                   <div className="w-52 space-y-1.5 text-sm">
-                    <div className="flex justify-between"><span className="text-slate-500">Subtotal</span><span>{fmt(invoice.subtotal)}</span></div>
+                    <div className="flex justify-between"><span className="text-soft">Subtotal</span><span>{fmt(invoice.subtotal)}</span></div>
                     {invoice.discountAmount > 0 && <div className="flex justify-between text-emerald-600"><span>Descuento</span><span>-{fmt(invoice.discountAmount)}</span></div>}
-                    {invoice.taxAmount > 0 && <div className="flex justify-between"><span className="text-slate-500">IVA</span><span>{fmt(invoice.taxAmount)}</span></div>}
-                    <div className="flex justify-between font-bold text-base border-t border-slate-200 pt-2"><span>TOTAL</span><span>{fmt(invoice.total)}</span></div>
+                    {invoice.taxAmount > 0 && <div className="flex justify-between"><span className="text-soft">IVA</span><span>{fmt(invoice.taxAmount)}</span></div>}
+                    {(invoice.serviceCharge ?? 0) > 0 && <div className="flex justify-between"><span className="text-soft">Servicio</span><span>{fmt(invoice.serviceCharge!)}</span></div>}
+                    {(invoice.tipAmount ?? 0) > 0 && <div className="flex justify-between"><span className="text-soft">Propina</span><span>{fmt(invoice.tipAmount!)}</span></div>}
+                    <div className="flex justify-between font-bold text-base border-t border-default pt-2"><span>TOTAL</span><span>{fmt(invoice.total)}</span></div>
                   </div>
                 </div>
               </div>
@@ -473,7 +483,7 @@ export default function InvoiceDetailPage() {
               </div>
             )}
             {!invoice.dianStatus && (
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 text-sm text-slate-500">
+              <div className="surface-2 border border-default rounded-xl p-4 text-sm text-soft">
                 DIAN no configurada para emisión electrónica. Factura generada en Kaivor.
               </div>
             )}
@@ -482,15 +492,15 @@ export default function InvoiceDetailPage() {
 
         {/* Tab: Tirilla */}
         {tab === 'tirilla' && (
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <div className="surface rounded-xl border p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-semibold text-slate-700">Vista previa de tirilla</h2>
+              <h2 className="text-sm font-semibold text-default">Vista previa de tirilla</h2>
               <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500">Tamaño:</span>
+                <span className="text-xs text-soft">Tamaño:</span>
                 <button onClick={() => setPaperSize('58mm')}
-                  className={`px-2 py-0.5 text-xs rounded font-medium ${paperSize === '58mm' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>58mm</button>
+                  className={`px-2 py-0.5 text-xs rounded font-medium ${paperSize === '58mm' ? 'bg-ink-900 text-white' : 'surface-2 text-soft'}`}>58mm</button>
                 <button onClick={() => setPaperSize('80mm')}
-                  className={`px-2 py-0.5 text-xs rounded font-medium ${paperSize === '80mm' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>80mm</button>
+                  className={`px-2 py-0.5 text-xs rounded font-medium ${paperSize === '80mm' ? 'bg-ink-900 text-white' : 'surface-2 text-soft'}`}>80mm</button>
               </div>
             </div>
             {/* Receipt preview */}
@@ -535,7 +545,7 @@ export default function InvoiceDetailPage() {
               </div>
             </div>
             <button onClick={printReceipt}
-              className="w-full bg-slate-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors">
+              className="w-full bg-ink-900 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-ink-700 transition-colors">
               🖨 Imprimir tirilla {paperSize}
             </button>
           </div>
@@ -543,20 +553,20 @@ export default function InvoiceDetailPage() {
 
         {/* Tab: Pagos */}
         {tab === 'pagos' && (
-          <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-slate-100 flex justify-between">
-              <span className="text-sm font-semibold text-slate-700">Registro de pagos</span>
+          <div className="surface rounded-xl border overflow-hidden">
+            <div className="px-5 py-3 border-b border-default flex justify-between">
+              <span className="text-sm font-semibold text-default">Registro de pagos</span>
               <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${payCls}`}>{PAY_LABELS[invoice.paymentStatus]}</span>
             </div>
             {invoice.payments.length === 0 ? (
-              <p className="px-5 py-8 text-center text-slate-500 text-sm">Sin pagos registrados.</p>
+              <p className="px-5 py-8 text-center text-soft text-sm">Sin pagos registrados.</p>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-default">
                 {invoice.payments.map(p => (
                   <div key={p.id} className="px-5 py-3.5 flex justify-between items-center">
                     <div>
-                      <p className="text-sm font-medium text-slate-900">{PAYMENT_LABELS[p.method] ?? p.method}</p>
-                      <p className="text-xs text-slate-500">{fmtDate(p.paidAt)}</p>
+                      <p className="text-sm font-medium text-default">{PAYMENT_LABELS[p.method] ?? p.method}</p>
+                      <p className="text-xs text-soft">{fmtDate(p.paidAt)}</p>
                     </div>
                     <p className="text-sm font-bold text-emerald-700">{fmt(p.amount)}</p>
                   </div>
@@ -570,43 +580,43 @@ export default function InvoiceDetailPage() {
         {tab === 'actividad' && (
           <div className="space-y-3">
             {/* Delivery logs */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <span className="text-sm font-semibold text-slate-700">Envíos</span>
+            <div className="surface rounded-xl border overflow-hidden">
+              <div className="px-5 py-3 border-b border-default">
+                <span className="text-sm font-semibold text-default">Envíos</span>
               </div>
               {invoice.deliveryLogs.length === 0 ? (
-                <p className="px-5 py-6 text-center text-slate-500 text-sm">No se ha enviado la factura aún.</p>
+                <p className="px-5 py-6 text-center text-soft text-sm">No se ha enviado la factura aún.</p>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-default">
                   {invoice.deliveryLogs.map(log => (
                     <div key={log.id} className="px-5 py-3 flex items-center gap-3">
                       <span className="text-lg">{log.channel === 'whatsapp' ? '💬' : '✉'}</span>
                       <div className="flex-1">
-                        <p className="text-sm text-slate-900 capitalize">{log.channel}</p>
-                        <p className="text-xs text-slate-500">{log.destination}</p>
+                        <p className="text-sm text-default capitalize">{log.channel}</p>
+                        <p className="text-xs text-soft">{log.destination}</p>
                       </div>
-                      <p className="text-xs text-slate-400">{fmtDate(log.sentAt)}</p>
+                      <p className="text-xs text-soft">{fmtDate(log.sentAt)}</p>
                     </div>
                   ))}
                 </div>
               )}
             </div>
             {/* Print logs */}
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <div className="px-5 py-3 border-b border-slate-100">
-                <span className="text-sm font-semibold text-slate-700">Impresiones</span>
+            <div className="surface rounded-xl border overflow-hidden">
+              <div className="px-5 py-3 border-b border-default">
+                <span className="text-sm font-semibold text-default">Impresiones</span>
               </div>
               {invoice.printLogs.length === 0 ? (
-                <p className="px-5 py-6 text-center text-slate-500 text-sm">Aún no se ha impreso.</p>
+                <p className="px-5 py-6 text-center text-soft text-sm">Aún no se ha impreso.</p>
               ) : (
-                <div className="divide-y divide-slate-100">
+                <div className="divide-y divide-default">
                   {invoice.printLogs.map(log => (
                     <div key={log.id} className="px-5 py-3 flex items-center gap-3">
                       <span className="text-lg">🖨</span>
                       <div className="flex-1">
-                        <p className="text-sm text-slate-900">{log.type === 'receipt' ? 'Tirilla' : 'Factura'} — {log.paperSize}</p>
+                        <p className="text-sm text-default">{log.type === 'receipt' ? 'Tirilla' : 'Factura'} — {log.paperSize}</p>
                       </div>
-                      <p className="text-xs text-slate-400">{fmtDate(log.createdAt)}</p>
+                      <p className="text-xs text-soft">{fmtDate(log.createdAt)}</p>
                     </div>
                   ))}
                 </div>

@@ -52,3 +52,31 @@ postgres_data/
 # Temporary
 tmp/
 temp/
+
+# Scratch / curl-test artifacts (NUNCA commitear — pueden contener tokens)
+*_token.txt
+token.txt
+login.json
+login_resp.json
+*-resp.json
+body.txt
+body2.txt
+c2.txt
+create.txt
+cust.json
+inv.json
+msgs.txt
+prod.json
+bal.json
+customers.json
+item.json
+paid.json
+uc.json
+uv.json
+vac.json
+invoices.json
+UsersPC*
+*resend-key*
+.migsecret.tmp
+.clsecret.tmp
+*.tmp.json

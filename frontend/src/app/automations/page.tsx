@@ -110,11 +110,11 @@ export default function AutomationsPage() {
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Automatizaciones</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Automatiza procesos repetitivos de tu negocio.</p>
+            <h1 className="text-2xl font-bold text-default">Automatizaciones</h1>
+            <p className="text-sm text-soft mt-0.5">Automatiza procesos repetitivos de tu negocio.</p>
           </div>
           <button onClick={() => setCreating(true)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-700">
+            className="bg-brand text-ink-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-300">
             + Crear
           </button>
         </div>
@@ -122,52 +122,52 @@ export default function AutomationsPage() {
         {/* Active automations */}
         {loading ? (
           <div className="space-y-2 mb-6">
-            {[...Array(2)].map((_, i) => <div key={i} className="h-20 bg-slate-100 animate-pulse rounded-xl" />)}
+            {[...Array(2)].map((_, i) => <div key={i} className="h-20 surface-2 animate-pulse rounded-xl" />)}
           </div>
         ) : automations.length > 0 ? (
           <div className="space-y-3 mb-6">
             {automations.map(a => (
-              <div key={a.id} className="bg-white rounded-xl border border-slate-200 p-4">
+              <div key={a.id} className="surface rounded-xl border p-4">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-semibold text-slate-900">{a.name}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                      <p className="text-sm font-semibold text-default">{a.name}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${a.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'surface-2 text-soft'}`}>
                         {a.status === 'active' ? 'Activa' : 'Pausada'}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 mt-0.5">{TRIGGERS[a.trigger]}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-soft mt-0.5">{TRIGGERS[a.trigger]}</p>
+                    <p className="text-xs text-soft mt-0.5">
                       {a.actions.map(ac => ACTIONS[ac]).filter(Boolean).join(' · ')}
                     </p>
-                    <p className="text-xs text-slate-400 mt-1">
+                    <p className="text-xs text-soft mt-1">
                       {a.runCount} ejecución(es){a.lastRunAt ? ` · última ${fmtDate(a.lastRunAt)}` : ''}
                     </p>
                   </div>
                 </div>
                 {runResult?.id === a.id && (
-                  <div className="bg-violet-50 border border-violet-100 rounded-lg px-3 py-2 mt-2">
-                    <p className="text-xs text-violet-700">{runResult.text}</p>
+                  <div className="border rounded-lg px-3 py-2 mt-2" style={{ backgroundColor: 'rgba(163,204,57,0.10)', borderColor: 'rgba(163,204,57,0.22)' }}>
+                    <p className="text-xs text-brand">{runResult.text}</p>
                   </div>
                 )}
                 {a.runs && a.runs.length > 0 && (
                   <div className="mt-2 space-y-1">
-                    <p className="text-[10px] uppercase tracking-wide text-slate-400 font-medium">Historial de ejecuciones</p>
+                    <p className="text-[10px] uppercase tracking-wide text-soft font-medium">Historial de ejecuciones</p>
                     {a.runs.slice(0, 4).map(r => (
                       <div key={r.id} className="flex items-center gap-2 text-xs">
                         <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                           r.status === 'success' ? 'bg-emerald-500' : r.status === 'failed' ? 'bg-red-500' : 'bg-slate-300'}`} />
-                        <span className="text-slate-500">{fmtDate(r.executedAt)}</span>
-                        <span className={`truncate ${r.status === 'failed' ? 'text-red-600' : 'text-slate-600'}`}>
+                        <span className="text-soft">{fmtDate(r.executedAt)}</span>
+                        <span className={`truncate ${r.status === 'failed' ? 'text-red-600' : 'text-soft'}`}>
                           {r.status === 'failed' ? `Error: ${r.error || 'falló'}` : r.summary}
                         </span>
                       </div>
                     ))}
                   </div>
                 )}
-                <div className="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                  <button onClick={() => run(a)} className="text-xs bg-violet-600 text-white px-3 py-1.5 rounded-lg hover:bg-violet-700">Probar ahora</button>
-                  <button onClick={() => toggleStatus(a)} className="text-xs bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg hover:bg-slate-200">
+                <div className="flex gap-2 mt-3 pt-3 border-t border-default">
+                  <button onClick={() => run(a)} className="text-xs bg-brand text-ink-900 font-semibold px-3 py-1.5 rounded-lg hover:bg-brand-300">Probar ahora</button>
+                  <button onClick={() => toggleStatus(a)} className="text-xs surface-2 text-default px-3 py-1.5 rounded-lg hover:opacity-80">
                     {a.status === 'active' ? 'Pausar' : 'Activar'}
                   </button>
                   <button onClick={() => del(a.id)} className="text-xs text-red-500 px-3 py-1.5 rounded-lg hover:bg-red-50">Eliminar</button>
@@ -176,31 +176,31 @@ export default function AutomationsPage() {
             ))}
           </div>
         ) : (
-          <div className="bg-white rounded-xl border border-slate-200 p-8 text-center mb-6">
+          <div className="surface rounded-xl border p-8 text-center mb-6">
             <p className="text-3xl mb-2">⚡</p>
-            <p className="text-sm font-medium text-slate-700">Sin automatizaciones aún</p>
-            <p className="text-xs text-slate-400 mt-0.5">Empieza con una de las plantillas sugeridas abajo.</p>
+            <p className="text-sm font-medium text-default">Sin automatizaciones aún</p>
+            <p className="text-xs text-soft mt-0.5">Empieza con una de las plantillas sugeridas abajo.</p>
           </div>
         )}
 
         {/* Suggested */}
-        <h2 className="text-sm font-semibold text-slate-700 mb-2">Automatizaciones sugeridas</h2>
+        <h2 className="text-sm font-semibold text-default mb-2">Automatizaciones sugeridas</h2>
         <div className="space-y-2">
           {SUGGESTED.map(s => (
-            <div key={s.name} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center justify-between gap-3">
+            <div key={s.name} className="surface rounded-xl border p-4 flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium text-slate-900">{s.name}</p>
-                <p className="text-xs text-slate-500">{s.description}</p>
+                <p className="text-sm font-medium text-default">{s.name}</p>
+                <p className="text-xs text-soft">{s.description}</p>
               </div>
               <button onClick={() => create(s)} disabled={usedTriggers.has(s.name)}
-                className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 disabled:opacity-40 flex-shrink-0">
+                className="text-xs bg-ink-900 text-white px-3 py-1.5 rounded-lg hover:bg-ink-700 disabled:opacity-40 flex-shrink-0">
                 {usedTriggers.has(s.name) ? 'Creada' : 'Activar'}
               </button>
             </div>
           ))}
         </div>
 
-        <p className="text-xs text-slate-400 mt-4 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
+        <p className="text-xs text-soft mt-4 surface-2 border border-default rounded-lg px-3 py-2">
           Las automatizaciones se ejecutan al pulsar "Probar ahora" y detectan los casos que cumplen la condición.
           La ejecución programada automática estará disponible próximamente.
         </p>
@@ -208,27 +208,27 @@ export default function AutomationsPage() {
         {/* Builder modal */}
         {creating && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setCreating(false)}>
-            <div className="bg-white rounded-xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Nueva automatización</h3>
-              <label className="text-xs text-slate-500 block mb-1">Nombre</label>
+            <div className="surface rounded-xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-default mb-3">Nueva automatización</h3>
+              <label className="text-xs text-soft block mb-1">Nombre</label>
               <input type="text" value={name} onChange={e => setName(e.target.value)}
                 placeholder="Ej: Recordatorio de cobro"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
+                className="w-full surface border rounded-lg px-3 py-2 text-sm text-default mb-3" />
 
-              <label className="text-xs text-slate-500 block mb-1">CUANDO… (disparador)</label>
+              <label className="text-xs text-soft block mb-1">CUANDO… (disparador)</label>
               <select value={trigger} onChange={e => setTrigger(e.target.value)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3">
+                className="w-full surface border rounded-lg px-3 py-2 text-sm text-default mb-3">
                 {Object.entries(TRIGGERS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
 
-              <label className="text-xs text-slate-500 block mb-1">ENTONCES… (acciones)</label>
+              <label className="text-xs text-soft block mb-1">ENTONCES… (acciones)</label>
               <div className="space-y-1.5 mb-4">
                 {Object.entries(ACTIONS).map(([k, v]) => (
                   <label key={k} className="flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" checked={actions.includes(k)}
                       onChange={e => setActions(a => e.target.checked ? [...a, k] : a.filter(x => x !== k))}
-                      className="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
-                    <span className="text-sm text-slate-700">{v}</span>
+                      className="rounded border-default text-brand focus:ring-brand" />
+                    <span className="text-sm text-default">{v}</span>
                   </label>
                 ))}
               </div>
@@ -240,7 +240,7 @@ export default function AutomationsPage() {
                   Crear automatización
                 </button>
                 <button onClick={() => setCreating(false)}
-                  className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+                  className="px-4 py-2 rounded-lg text-sm border border-default text-soft hover:opacity-80">
                   Cancelar
                 </button>
               </div>

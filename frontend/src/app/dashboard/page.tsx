@@ -28,6 +28,13 @@ interface InvoiceStats {
   pendingInvoices: number;
 }
 
+interface Vertical {
+  id: string;
+  label: string;
+  emoji: string;
+  description?: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -38,6 +45,10 @@ export default function DashboardPage() {
   const [productsCount, setProductsCount] = useState<number | null>(null);
   const [insight, setInsight] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<{ steps: any[]; completed: number; total: number; percentage: number } | null>(null);
+  const [businessType, setBusinessType] = useState<string | null>(null);
+  const [verticals, setVerticals] = useState<Vertical[]>([]);
+  const [savingVertical, setSavingVertical] = useState<string | null>(null);
+  const [verticalDone, setVerticalDone] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,10 +70,14 @@ export default function DashboardPage() {
         axios.get(`${API}/customers`, { headers }),
         axios.get(`${API}/products`, { headers }),
         axios.get(`${API}/onboarding`, { headers }),
+        axios.get(`${API}/companies/my`, { headers }),
+        axios.get(`${API}/companies/verticals`, { headers }),
       ]);
 
-      const [usageRes, intRes, statsRes, custRes, prodRes, onbRes] = results;
+      const [usageRes, intRes, statsRes, custRes, prodRes, onbRes, companyRes, vertRes] = results;
       if (onbRes.status === 'fulfilled') setOnboarding(onbRes.value.data);
+      if (companyRes.status === 'fulfilled') setBusinessType(companyRes.value.data.businessType ?? null);
+      if (vertRes.status === 'fulfilled') setVerticals(vertRes.value.data.verticals ?? []);
 
       if (usageRes.status === 'fulfilled') {
         const u = usageRes.value.data;
@@ -82,6 +97,23 @@ export default function DashboardPage() {
     }
   };
 
+  const pickVertical = async (id: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    setSavingVertical(id);
+    try {
+      await axios.patch(`${API}/companies/my`, { businessType: id }, { headers: { Authorization: `Bearer ${token}` } });
+      setBusinessType(id);
+      setVerticalDone(true);
+    } catch {
+      // keep card visible on failure
+    } finally {
+      setSavingVertical(null);
+    }
+  };
+
+  const showVerticalPrompt = !verticalDone && verticals.length > 0 && (!businessType || businessType === 'generic');
+
   const wooIntegration = integrations.find((i) => i.provider === 'woocommerce');
 
   if (loading) {
@@ -89,7 +121,7 @@ export default function DashboardPage() {
       <AppLayout>
         <div className="p-6 max-w-5xl mx-auto space-y-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-28 bg-slate-100 animate-pulse rounded-xl" />
+            <div key={i} className="h-28 surface-2 animate-pulse rounded-xl" />
           ))}
         </div>
       </AppLayout>
@@ -101,32 +133,58 @@ export default function DashboardPage() {
       <div className="p-6 max-w-5xl mx-auto">
         {/* Greeting */}
         <div className="mb-6">
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold text-default">
             Hola{user?.name ? `, ${user.name.split(' ')[0]}` : ''}
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">Aquí está el resumen de tu operación.</p>
+          <p className="text-sm text-soft mt-0.5">Aquí está el resumen de tu operación.</p>
         </div>
+
+        {/* Business type first-run nudge */}
+        {showVerticalPrompt && (
+          <div className="surface rounded-xl border p-5 mb-6" style={{ background: 'linear-gradient(135deg, rgba(163,204,57,0.12), rgba(11,18,32,0.04))', borderColor: 'rgba(163,204,57,0.25)' }}>
+            <h2 className="text-base font-semibold text-default">¿Qué tipo de negocio tienes?</h2>
+            <p className="text-xs text-soft mt-0.5 mb-4">
+              Elige tu rubro para personalizar Kaivor a tu medida.
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
+              {verticals.filter((v) => v.id !== 'generic').map((v) => (
+                <button
+                  key={v.id}
+                  onClick={() => pickVertical(v.id)}
+                  disabled={!!savingVertical}
+                  title={v.description}
+                  className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-default surface hover:border-brand transition-colors text-left disabled:opacity-50"
+                >
+                  <span className="text-xl flex-shrink-0">{v.emoji}</span>
+                  <span className="text-sm font-medium text-default flex-1 truncate">
+                    {savingVertical === v.id ? 'Guardando…' : v.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Onboarding checklist */}
         {onboarding && onboarding.completed < onboarding.total && (
-          <div className="bg-white rounded-xl border border-violet-200 p-5 mb-6">
+          <div className="surface rounded-xl border p-5 mb-6" style={{ borderColor: 'rgba(163,204,57,0.3)' }}>
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-sm font-semibold text-slate-900">Configura Kaivor paso a paso</h2>
-                <p className="text-xs text-slate-500">{onboarding.completed} de {onboarding.total} pasos completados</p>
+                <h2 className="text-sm font-semibold text-default">Configura Kaivor paso a paso</h2>
+                <p className="text-xs text-soft">{onboarding.completed} de {onboarding.total} pasos completados</p>
               </div>
-              <span className="text-lg font-bold text-violet-600">{onboarding.percentage}%</span>
+              <span className="text-lg font-bold text-brand">{onboarding.percentage}%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2 mb-4">
-              <div className="h-2 rounded-full bg-violet-600 transition-all" style={{ width: `${onboarding.percentage}%` }} />
+            <div className="w-full surface-2 rounded-full h-2 mb-4">
+              <div className="h-2 rounded-full bg-brand transition-all" style={{ width: `${onboarding.percentage}%` }} />
             </div>
             <div className="space-y-1.5">
               {onboarding.steps.filter((s) => !s.done).slice(0, 4).map((s) => (
                 <Link key={s.id} href={s.href}
-                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-violet-50 transition-colors group">
-                  <span className="w-4 h-4 rounded-full border-2 border-slate-300 flex-shrink-0" />
-                  <span className="text-sm text-slate-700 flex-1">{s.label}</span>
-                  <span className="text-xs text-violet-600 opacity-0 group-hover:opacity-100">Ir →</span>
+                  className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors group">
+                  <span className="w-4 h-4 rounded-full border-2 border-default flex-shrink-0" />
+                  <span className="text-sm text-default flex-1">{s.label}</span>
+                  <span className="text-xs text-brand opacity-0 group-hover:opacity-100">Ir →</span>
                 </Link>
               ))}
               {onboarding.steps.filter((s) => s.done).slice(0, 2).map((s) => (
@@ -134,7 +192,7 @@ export default function DashboardPage() {
                   <span className="w-4 h-4 rounded-full bg-emerald-500 flex items-center justify-center flex-shrink-0">
                     <span className="text-white text-[10px]">✓</span>
                   </span>
-                  <span className="text-sm text-slate-500 line-through flex-1">{s.label}</span>
+                  <span className="text-sm text-soft line-through flex-1">{s.label}</span>
                 </div>
               ))}
             </div>
@@ -143,32 +201,33 @@ export default function DashboardPage() {
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Ingresos del mes</p>
-            <p className="text-xl font-bold text-slate-900">
+          <div className="surface rounded-xl border p-4 relative overflow-hidden">
+            <span className="absolute top-0 left-0 h-full w-1 bg-brand" />
+            <p className="text-xs text-soft uppercase tracking-wide mb-1">Ingresos del mes</p>
+            <p className="text-xl font-bold text-default">
               ${(invoiceStats?.totalRevenue ?? 0).toLocaleString('es-CO')}
             </p>
-            <Link href="/invoices" className="text-xs text-slate-400 hover:text-violet-600 mt-0.5 inline-block">Ver facturas →</Link>
+            <Link href="/invoices" className="text-xs text-soft hover:text-brand mt-0.5 inline-block">Ver facturas →</Link>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Facturas emitidas</p>
-            <p className="text-xl font-bold text-slate-900">{invoiceStats?.totalInvoices ?? 0}</p>
+          <div className="surface rounded-xl border p-4">
+            <p className="text-xs text-soft uppercase tracking-wide mb-1">Facturas emitidas</p>
+            <p className="text-xl font-bold text-default">{invoiceStats?.totalInvoices ?? 0}</p>
             {(invoiceStats?.pendingInvoices ?? 0) > 0 && (
-              <p className="text-xs text-amber-600 mt-0.5">{invoiceStats?.pendingInvoices} pendientes de cobro</p>
+              <p className="text-xs text-amber-500 mt-0.5">{invoiceStats?.pendingInvoices} pendientes de cobro</p>
             )}
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Clientes</p>
-            <p className="text-xl font-bold text-slate-900">{customersCount ?? '—'}</p>
-            <Link href="/customers" className="text-xs text-slate-400 hover:text-violet-600 mt-0.5 inline-block">Gestionar →</Link>
+          <div className="surface rounded-xl border p-4">
+            <p className="text-xs text-soft uppercase tracking-wide mb-1">Clientes</p>
+            <p className="text-xl font-bold text-default">{customersCount ?? '—'}</p>
+            <Link href="/customers" className="text-xs text-soft hover:text-brand mt-0.5 inline-block">Gestionar →</Link>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-4">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Productos</p>
-            <p className="text-xl font-bold text-slate-900">{productsCount ?? '—'}</p>
-            <Link href="/products" className="text-xs text-slate-400 hover:text-violet-600 mt-0.5 inline-block">Gestionar →</Link>
+          <div className="surface rounded-xl border p-4">
+            <p className="text-xs text-soft uppercase tracking-wide mb-1">Productos</p>
+            <p className="text-xl font-bold text-default">{productsCount ?? '—'}</p>
+            <Link href="/products" className="text-xs text-soft hover:text-brand mt-0.5 inline-block">Gestionar →</Link>
           </div>
         </div>
 
@@ -176,14 +235,14 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
           {/* Invoice usage */}
           {usage && (
-            <div className="bg-white rounded-xl border border-slate-200 p-5">
+            <div className="surface rounded-xl border p-5">
               <div className="flex justify-between items-start mb-3">
-                <p className="text-xs text-slate-500 uppercase tracking-wide">Uso de facturas</p>
-                <span className="text-xs font-medium text-slate-600">
+                <p className="text-xs text-soft uppercase tracking-wide">Uso de facturas</p>
+                <span className="text-xs font-medium text-default">
                   {usage.invoices.used} / {usage.invoices.limit}
                 </span>
               </div>
-              <div className="w-full bg-slate-100 rounded-full h-2 mb-3">
+              <div className="w-full surface-2 rounded-full h-2 mb-3">
                 <div
                   className={`h-2 rounded-full transition-all ${
                     usage.invoices.percentage >= 90 ? 'bg-red-500' :
@@ -201,41 +260,41 @@ export default function DashboardPage() {
                   Quedan {usage.invoices.remaining} facturas — Ver planes →
                 </Link>
               ) : (
-                <p className="text-xs text-slate-400">{usage.invoices.remaining} facturas disponibles este mes</p>
+                <p className="text-xs text-soft">{usage.invoices.remaining} facturas disponibles este mes</p>
               )}
             </div>
           )}
 
           {/* WooCommerce */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5">
-            <p className="text-xs text-slate-500 uppercase tracking-wide mb-3">WooCommerce</p>
+          <div className="surface rounded-xl border p-5">
+            <p className="text-xs text-soft uppercase tracking-wide mb-3">WooCommerce</p>
             {wooIntegration ? (
               <>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className={`w-2 h-2 rounded-full ${wooIntegration.status === 'connected' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                  <p className="text-sm font-medium text-slate-900">
+                  <span className={`w-2 h-2 rounded-full ${wooIntegration.status === 'connected' ? 'bg-emerald-500' : 'bg-slate-400'}`} />
+                  <p className="text-sm font-medium text-default">
                     {wooIntegration.status === 'connected' ? 'Conectado' : 'Desconectado'}
                   </p>
                 </div>
-                <p className="text-xs text-slate-400 truncate mb-2">{wooIntegration.storeUrl}</p>
-                <Link href="/integrations/woocommerce" className="text-xs text-violet-600 hover:underline font-medium">
+                <p className="text-xs text-soft truncate mb-2">{wooIntegration.storeUrl}</p>
+                <Link href="/integrations/woocommerce" className="text-xs text-brand hover:underline font-medium">
                   Ver sincronización →
                 </Link>
               </>
             ) : usage?.features.woocommerce ? (
               <div>
-                <p className="text-sm text-slate-500 mb-3">No conectado aún</p>
+                <p className="text-sm text-soft mb-3">No conectado aún</p>
                 <Link
                   href="/integrations/woocommerce"
-                  className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 inline-block"
+                  className="text-xs bg-ink-900 text-white px-3 py-1.5 rounded-lg hover:bg-ink-700 inline-block"
                 >
                   Conectar tienda →
                 </Link>
               </div>
             ) : (
               <div>
-                <p className="text-xs text-slate-500 mb-2">Disponible en Pro AI y Business.</p>
-                <Link href="/pricing" className="text-xs text-violet-600 hover:underline font-medium">
+                <p className="text-xs text-soft mb-2">Disponible en Pro AI y Business.</p>
+                <Link href="/pricing" className="text-xs text-brand hover:underline font-medium">
                   Desbloquear →
                 </Link>
               </div>
@@ -243,21 +302,21 @@ export default function DashboardPage() {
           </div>
 
           {/* AI Insight */}
-          <div className="bg-gradient-to-br from-violet-50 to-indigo-50 rounded-xl border border-violet-100 p-5">
-            <p className="text-xs text-violet-600 uppercase tracking-wide font-medium mb-2">✦ Kaivor AI</p>
+          <div className="rounded-xl border p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, rgba(163,204,57,0.12), rgba(11,18,32,0.04))', borderColor: 'rgba(163,204,57,0.25)' }}>
+            <p className="text-xs uppercase tracking-wide font-semibold mb-2 text-brand">✦ Kaivor AI</p>
             {insight ? (
               <>
-                <p className="text-sm text-slate-700 leading-relaxed line-clamp-3">{insight}</p>
-                <Link href="/ai-insights" className="text-xs text-violet-600 hover:underline mt-2 block font-medium">
+                <p className="text-sm text-default leading-relaxed line-clamp-3">{insight}</p>
+                <Link href="/ai-insights" className="text-xs text-brand hover:underline mt-2 block font-medium">
                   Ver análisis completo →
                 </Link>
               </>
             ) : usage?.features.aiInsights ? (
-              <p className="text-sm text-slate-500">Generando recomendaciones...</p>
+              <p className="text-sm text-soft">Generando recomendaciones...</p>
             ) : (
               <div>
-                <p className="text-sm text-slate-600 mb-3">Desbloquea Kaivor AI para analizar tus ventas y recibir recomendaciones automáticas.</p>
-                <Link href="/pricing" className="text-xs text-violet-700 font-medium hover:underline">
+                <p className="text-sm text-soft mb-3">Desbloquea Kaivor AI para analizar tus ventas y recibir recomendaciones automáticas.</p>
+                <Link href="/pricing" className="text-xs font-medium hover:underline text-brand">
                   Ver planes con IA →
                 </Link>
               </div>
@@ -266,36 +325,37 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick actions */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-4">Acciones rápidas</h2>
+        <div className="surface rounded-xl border p-5">
+          <h2 className="text-sm font-semibold text-default mb-4">Acciones rápidas</h2>
           <div className="flex flex-wrap gap-3">
             <Link
               href="/invoices/create"
-              className="bg-slate-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-700 transition-colors"
+              className="bg-brand text-ink-900 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-brand-300 transition-colors"
             >
               + Nueva factura
             </Link>
             <Link
               href="/customers"
-              className="border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              className="border border-default text-default px-4 py-2 rounded-lg text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               + Nuevo cliente
             </Link>
             <Link
               href="/products"
-              className="border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              className="border border-default text-default px-4 py-2 rounded-lg text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               + Nuevo producto
             </Link>
             <Link
               href="/invoices"
-              className="border border-slate-200 text-slate-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
+              className="border border-default text-default px-4 py-2 rounded-lg text-sm font-medium hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               Ver facturas
             </Link>
             <Link
               href="/pricing"
-              className="border border-violet-200 text-violet-700 px-4 py-2 rounded-lg text-sm font-medium hover:bg-violet-50 transition-colors"
+              className="border px-4 py-2 rounded-lg text-sm font-medium text-brand transition-colors hover:bg-black/5 dark:hover:bg-white/5"
+              style={{ borderColor: 'rgba(163,204,57,0.4)' }}
             >
               Ver planes
             </Link>

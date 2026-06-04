@@ -77,16 +77,16 @@ export default function CustomersPage() {
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-5xl mx-auto">
+      <div className="p-6 max-w-5xl mx-auto app-bg">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Clientes</h1>
-            <p className="text-sm text-slate-500 mt-0.5">{customers.length} cliente{customers.length !== 1 ? 's' : ''} registrado{customers.length !== 1 ? 's' : ''}</p>
+            <h1 className="text-2xl font-bold text-default">Clientes</h1>
+            <p className="text-sm text-soft mt-0.5">{customers.length} cliente{customers.length !== 1 ? 's' : ''} registrado{customers.length !== 1 ? 's' : ''}</p>
           </div>
           <button
             onClick={() => setShowForm(true)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-700 transition-colors"
+            className="bg-ink-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-ink-700 transition-colors"
           >
             + Nuevo cliente
           </button>
@@ -94,67 +94,67 @@ export default function CustomersPage() {
 
         {/* Create form slide-in */}
         {showForm && (
-          <div className="bg-white rounded-xl border border-violet-200 p-6 mb-6">
-            <h2 className="text-base font-semibold text-slate-900 mb-4">Nuevo cliente</h2>
+          <div className="surface rounded-xl border p-6 mb-6">
+            <h2 className="text-base font-semibold text-default mb-4">Nuevo cliente</h2>
             <form onSubmit={handleCreate} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Nombre *</label>
+                <label className="block text-xs font-medium text-default mb-1">Nombre *</label>
                 <input
                   value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })}
                   placeholder="Empresa o persona" required
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">NIT / Cédula</label>
+                <label className="block text-xs font-medium text-default mb-1">NIT / Cédula</label>
                 <input
                   value={form.taxId} onChange={(e) => setForm({ ...form, taxId: e.target.value })}
                   placeholder="900123456-7"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Correo</label>
+                <label className="block text-xs font-medium text-default mb-1">Correo</label>
                 <input
                   type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })}
                   placeholder="contacto@empresa.com"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Teléfono</label>
+                <label className="block text-xs font-medium text-default mb-1">Teléfono</label>
                 <input
                   value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })}
                   placeholder="+57 300 000 0000"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Ciudad</label>
+                <label className="block text-xs font-medium text-default mb-1">Ciudad</label>
                 <input
                   value={form.city} onChange={(e) => setForm({ ...form, city: e.target.value })}
                   placeholder="Bogotá"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Dirección</label>
+                <label className="block text-xs font-medium text-default mb-1">Dirección</label>
                 <input
                   value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })}
                   placeholder="Cra 7 # 10-20"
-                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
                 />
               </div>
               <div className="sm:col-span-2 flex justify-end gap-3 pt-2">
                 <button
                   type="button" onClick={() => { setShowForm(false); setForm(EMPTY_FORM); }}
-                  className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg"
+                  className="px-4 py-2 text-sm text-soft hover:text-default border border-default rounded-lg"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit" disabled={saving}
-                  className="px-5 py-2 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-700 disabled:opacity-50"
+                  className="px-5 py-2 bg-brand text-ink-900 rounded-lg text-sm font-semibold hover:bg-brand-300 disabled:opacity-50"
                 >
                   {saving ? 'Guardando...' : 'Guardar cliente'}
                 </button>
@@ -168,7 +168,7 @@ export default function CustomersPage() {
           <input
             value={search} onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar por nombre, correo o NIT..."
-            className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 mb-4 bg-white"
+            className="w-full surface border rounded-xl px-4 py-2.5 text-sm text-default focus:outline-none focus:ring-2 ring-brand mb-4"
           />
         )}
 
@@ -176,24 +176,24 @@ export default function CustomersPage() {
         {loadError ? (
           <LoadError onRetry={() => fetchCustomers()} />
         ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="surface rounded-xl border overflow-hidden">
           {loading ? (
             <div className="space-y-px">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-50 animate-pulse border-b border-slate-100" />)}
+              {[...Array(4)].map((_, i) => <div key={i} className="h-16 surface-2 animate-pulse border-b border-default" />)}
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 px-6">
               <div className="text-4xl mb-3 opacity-30">◉</div>
-              <p className="text-slate-600 font-medium mb-1">
+              <p className="text-default font-medium mb-1">
                 {search ? 'No encontramos clientes con ese criterio.' : 'Aún no tienes clientes'}
               </p>
-              <p className="text-sm text-slate-400 mb-4">
+              <p className="text-sm text-soft mb-4">
                 {!search && 'Agrega tu primer cliente para comenzar a facturar.'}
               </p>
               {!search && (
                 <button
                   onClick={() => setShowForm(true)}
-                  className="inline-block bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-700"
+                  className="inline-block bg-brand text-ink-900 px-5 py-2 rounded-xl text-sm font-semibold hover:bg-brand-300"
                 >
                   Agregar primer cliente →
                 </button>
@@ -201,31 +201,31 @@ export default function CustomersPage() {
             </div>
           ) : (
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-100">
+              <thead className="surface-2 border-b border-default">
                 <tr>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Nombre</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide hidden sm:table-cell">Correo</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide hidden md:table-cell">NIT / Cédula</th>
-                  <th className="text-left px-5 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide hidden lg:table-cell">Ciudad</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-soft uppercase tracking-wide">Nombre</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-soft uppercase tracking-wide hidden sm:table-cell">Correo</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-soft uppercase tracking-wide hidden md:table-cell">NIT / Cédula</th>
+                  <th className="text-left px-5 py-3 text-xs font-medium text-soft uppercase tracking-wide hidden lg:table-cell">Ciudad</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-default">
                 {filtered.map((c) => (
                   <tr key={c.id} onClick={() => router.push(`/customers/${c.id}`)}
-                    className="hover:bg-slate-50 transition-colors cursor-pointer">
+                    className="hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer">
                     <td className="px-5 py-3.5">
-                      <p className="text-sm font-medium text-violet-700 hover:underline">{c.name}</p>
-                      {c.phone && <p className="text-xs text-slate-400">{c.phone}</p>}
+                      <p className="text-sm font-medium text-brand hover:underline">{c.name}</p>
+                      {c.phone && <p className="text-xs text-soft">{c.phone}</p>}
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-slate-600 hidden sm:table-cell">{c.email ?? '—'}</td>
-                    <td className="px-5 py-3.5 text-sm text-slate-500 hidden md:table-cell">
+                    <td className="px-5 py-3.5 text-sm text-default hidden sm:table-cell">{c.email ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-soft hidden md:table-cell">
                       {c.taxId ? (
                         <span>{c.taxId}</span>
                       ) : (
                         <span className="text-amber-500 text-xs">Sin documento fiscal</span>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-sm text-slate-400 hidden lg:table-cell">{c.city ?? '—'}</td>
+                    <td className="px-5 py-3.5 text-sm text-soft hidden lg:table-cell">{c.city ?? '—'}</td>
                   </tr>
                 ))}
               </tbody>

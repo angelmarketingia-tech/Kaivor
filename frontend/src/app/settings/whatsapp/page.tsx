@@ -117,7 +117,7 @@ export default function WhatsAppSettingsPage() {
   if (loading) return (
     <AppLayout>
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-700 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-default border-t-brand rounded-full animate-spin" />
       </div>
     </AppLayout>
   );
@@ -133,25 +133,25 @@ export default function WhatsAppSettingsPage() {
 
         <div className="mb-5">
           <button onClick={() => router.push('/settings/integrations')}
-            className="text-sm text-slate-500 hover:text-slate-900 mb-2 inline-flex items-center gap-1">
+            className="text-sm text-soft hover:text-default mb-2 inline-flex items-center gap-1">
             ← Integraciones
           </button>
-          <h1 className="text-2xl font-bold text-slate-900">WhatsApp</h1>
-          <p className="text-sm text-slate-500 mt-0.5">Envía facturas y recordatorios a tus clientes por WhatsApp.</p>
+          <h1 className="text-2xl font-bold text-default">WhatsApp</h1>
+          <p className="text-sm text-soft mt-0.5">Envía facturas y recordatorios a tus clientes por WhatsApp.</p>
         </div>
 
         {/* Mode */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">Modo de envío</h2>
+        <div className="surface rounded-xl border p-5 mb-4">
+          <h2 className="text-sm font-semibold text-default mb-3">Modo de envío</h2>
           <div className="space-y-2">
             {WA_MODES.map(m => (
               <button key={m.id} onClick={() => setWaMode(m.id)}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${waMode === m.id ? 'border-violet-500 bg-violet-50' : 'border-slate-200 hover:border-slate-300'}`}>
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${waMode === m.id ? 'border-brand bg-brand-50' : 'border-default hover:border-brand'}`}>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-slate-900">{m.label}</p>
+                  <p className="text-sm font-medium text-default">{m.label}</p>
                   {m.id === 'manual' && <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Recomendado</span>}
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">{m.desc}</p>
+                <p className="text-xs text-soft mt-0.5">{m.desc}</p>
               </button>
             ))}
           </div>
@@ -163,19 +163,19 @@ export default function WhatsAppSettingsPage() {
         </div>
 
         {/* Phone config */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 mb-4">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">Número de la empresa</h2>
+        <div className="surface rounded-xl border p-5 mb-4">
+          <h2 className="text-sm font-semibold text-default mb-3">Número de la empresa</h2>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-xs text-slate-500 block mb-1">Código país</label>
+              <label className="text-xs text-soft block mb-1">Código país</label>
               <input type="text" value={countryCode} onChange={e => setCountryCode(e.target.value.replace(/\D/g, ''))}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                className="w-full surface border rounded-lg px-3 py-2 text-sm text-default" />
             </div>
             <div className="col-span-2">
-              <label className="text-xs text-slate-500 block mb-1">Número de WhatsApp</label>
+              <label className="text-xs text-soft block mb-1">Número de WhatsApp</label>
               <input type="text" value={businessPhone} onChange={e => setBusinessPhone(e.target.value)}
                 placeholder="3001234567"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                className="w-full surface border rounded-lg px-3 py-2 text-sm text-default" />
             </div>
           </div>
           <button onClick={saveConfig} disabled={saving}
@@ -185,56 +185,56 @@ export default function WhatsAppSettingsPage() {
         </div>
 
         {/* Templates */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <div className="surface rounded-xl border p-5">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-700">Plantillas de mensaje</h2>
+            <h2 className="text-sm font-semibold text-default">Plantillas de mensaje</h2>
             <button onClick={() => setEditing({ id: '', channel: 'whatsapp', name: '', subject: null, body: '', active: true })}
-              className="text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700">
+              className="text-xs bg-ink-900 text-white px-3 py-1.5 rounded-lg hover:bg-ink-700">
               + Nueva plantilla
             </button>
           </div>
 
           {/* Test phone */}
           <div className="mb-3 flex items-center gap-2">
-            <span className="text-xs text-slate-500">Probar con:</span>
+            <span className="text-xs text-soft">Probar con:</span>
             <input type="text" value={testPhone} onChange={e => setTestPhone(e.target.value)}
               placeholder="número de prueba"
-              className="border border-slate-200 rounded-lg px-2 py-1 text-xs flex-1" />
+              className="surface border rounded-lg px-2 py-1 text-xs flex-1 text-default" />
           </div>
 
           <div className="space-y-2">
             {templates.map(t => (
-              <div key={t.id} className="border border-slate-100 rounded-lg p-3 bg-slate-50">
+              <div key={t.id} className="border border-default rounded-lg p-3 surface-2">
                 <div className="flex items-center justify-between mb-1">
-                  <p className="text-sm font-medium text-slate-900">{t.name}</p>
+                  <p className="text-sm font-medium text-default">{t.name}</p>
                   <div className="flex gap-1.5">
                     <button onClick={() => testSend(t)} className="text-xs text-green-600 hover:underline">Probar</button>
-                    <button onClick={() => setEditing(t)} className="text-xs text-violet-600 hover:underline">Editar</button>
+                    <button onClick={() => setEditing(t)} className="text-xs text-brand hover:underline">Editar</button>
                     <button onClick={() => deleteTemplate(t.id)} className="text-xs text-red-500 hover:underline">Eliminar</button>
                   </div>
                 </div>
-                <p className="text-xs text-slate-500 line-clamp-2">{t.body}</p>
+                <p className="text-xs text-soft line-clamp-2">{t.body}</p>
               </div>
             ))}
-            {templates.length === 0 && <p className="text-sm text-slate-400 text-center py-4">Sin plantillas aún.</p>}
+            {templates.length === 0 && <p className="text-sm text-soft text-center py-4">Sin plantillas aún.</p>}
           </div>
         </div>
 
         {/* Editor modal */}
         {editing && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setEditing(null)}>
-            <div className="bg-white rounded-xl p-5 max-w-md w-full" onClick={e => e.stopPropagation()}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">{editing.id ? 'Editar plantilla' : 'Nueva plantilla'}</h3>
-              <label className="text-xs text-slate-500 block mb-1">Nombre</label>
+            <div className="surface rounded-xl p-5 max-w-md w-full" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-default mb-3">{editing.id ? 'Editar plantilla' : 'Nueva plantilla'}</h3>
+              <label className="text-xs text-soft block mb-1">Nombre</label>
               <input type="text" value={editing.name} onChange={e => setEditing({ ...editing, name: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
-              <label className="text-xs text-slate-500 block mb-1">Mensaje</label>
+                className="w-full surface border rounded-lg px-3 py-2 text-sm mb-3 text-default" />
+              <label className="text-xs text-soft block mb-1">Mensaje</label>
               <textarea rows={4} value={editing.body} onChange={e => setEditing({ ...editing, body: e.target.value })}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none mb-2" />
+                className="w-full surface border rounded-lg px-3 py-2 text-sm resize-none mb-2 text-default" />
               <div className="flex flex-wrap gap-1 mb-3">
                 {VARS.map(v => (
                   <button key={v} onClick={() => setEditing({ ...editing, body: editing.body + ' ' + v })}
-                    className="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded hover:bg-slate-200 font-mono">{v}</button>
+                    className="text-xs surface-2 text-soft px-2 py-0.5 rounded hover:bg-brand-50 font-mono">{v}</button>
                 ))}
               </div>
               <div className="flex gap-2">
@@ -243,7 +243,7 @@ export default function WhatsAppSettingsPage() {
                   Guardar
                 </button>
                 <button onClick={() => setEditing(null)}
-                  className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+                  className="px-4 py-2 rounded-lg text-sm border border-default text-soft hover:bg-brand-50">
                   Cancelar
                 </button>
               </div>

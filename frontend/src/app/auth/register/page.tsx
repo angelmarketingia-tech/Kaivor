@@ -43,67 +43,67 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center px-4 py-10">
+    <div className="min-h-screen app-bg flex flex-col items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Kaivor</h1>
-          <p className="text-slate-500 mt-1 text-sm">Factura gratis. Conecta tu tienda. Automatiza tu operación.</p>
+          <h1 className="text-3xl font-bold text-default tracking-tight">Kaivor</h1>
+          <p className="text-soft mt-1 text-sm">Factura gratis. Conecta tu tienda. Automatiza tu operación.</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
-          <h2 className="text-xl font-semibold text-slate-900 mb-1">Crea tu cuenta gratis</h2>
-          <p className="text-sm text-slate-500 mb-6">Sin tarjeta de crédito. 45 facturas al mes incluidas.</p>
+        <div className="surface rounded-2xl border shadow-sm p-8">
+          <h2 className="text-xl font-semibold text-default mb-1">Crea tu cuenta gratis</h2>
+          <p className="text-sm text-soft mb-6">Sin tarjeta de crédito. 45 facturas al mes incluidas.</p>
 
           <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre completo</label>
+              <label className="block text-sm font-medium text-default mb-1.5">Nombre completo</label>
               <input
                 type="text" value={form.name} onChange={set('name')}
                 placeholder="Ana García" autoComplete="name"
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 border border-default rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand focus:border-transparent transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Nombre de tu empresa</label>
+              <label className="block text-sm font-medium text-default mb-1.5">Nombre de tu empresa</label>
               <input
                 type="text" value={form.companyName} onChange={set('companyName')}
                 placeholder="Mi Empresa S.A.S." autoComplete="organization"
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 border border-default rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand focus:border-transparent transition"
               />
-              <p className="text-xs text-slate-400 mt-1">Opcional — si lo dejas vacío usaremos tu nombre.</p>
+              <p className="text-xs text-soft mt-1">Opcional — si lo dejas vacío usaremos tu nombre.</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Correo electrónico</label>
+              <label className="block text-sm font-medium text-default mb-1.5">Correo electrónico</label>
               <input
                 type="email" value={form.email} onChange={set('email')}
                 placeholder="ana@miempresa.com" autoComplete="email"
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 border border-default rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand focus:border-transparent transition"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Contraseña</label>
+              <label className="block text-sm font-medium text-default mb-1.5">Contraseña</label>
               <div className="relative">
                 <input
                   type={showPass ? 'text' : 'password'} value={form.password} onChange={set('password')}
                   placeholder="Mínimo 6 caracteres" autoComplete="new-password"
-                  className="w-full px-4 py-2.5 pr-16 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                  className="w-full px-4 py-2.5 pr-16 border border-default rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand focus:border-transparent transition"
                 />
                 <button type="button" onClick={() => setShowPass((s) => !s)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 hover:text-slate-700">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-soft hover:text-default">
                   {showPass ? 'Ocultar' : 'Ver'}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Confirma tu contraseña</label>
+              <label className="block text-sm font-medium text-default mb-1.5">Confirma tu contraseña</label>
               <input
                 type={showPass ? 'text' : 'password'} value={form.confirm} onChange={set('confirm')}
                 placeholder="Repite la contraseña" autoComplete="new-password"
-                className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent transition"
+                className="w-full px-4 py-2.5 border border-default rounded-xl text-sm focus:outline-none focus:ring-2 ring-brand focus:border-transparent transition"
               />
               {form.confirm.length > 0 && form.password !== form.confirm && (
                 <p className="text-xs text-red-500 mt-1">Las contraseñas no coinciden.</p>
@@ -118,22 +118,22 @@ export default function RegisterPage() {
 
             <button
               type="submit" disabled={loading}
-              className="w-full bg-violet-600 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-violet-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-brand text-ink-900 py-2.5 rounded-xl font-semibold text-sm hover:bg-brand-300 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
             >
-              {loading && <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+              {loading && <span className="w-4 h-4 border-2 border-ink-900 border-t-transparent rounded-full animate-spin" />}
               {loading ? 'Creando tu cuenta…' : 'Comenzar gratis →'}
             </button>
           </form>
 
-          <p className="text-center text-sm text-slate-500 mt-6">
+          <p className="text-center text-sm text-soft mt-6">
             ¿Ya tienes cuenta?{' '}
-            <Link href="/auth/login" className="text-violet-600 font-medium hover:underline">
+            <Link href="/auth/login" className="text-brand font-medium hover:underline">
               Inicia sesión
             </Link>
           </p>
         </div>
 
-        <p className="text-center text-xs text-slate-400 mt-6">
+        <p className="text-center text-xs text-soft mt-6">
           Al registrarte aceptas nuestros Términos de Servicio y Política de Privacidad.
         </p>
       </div>

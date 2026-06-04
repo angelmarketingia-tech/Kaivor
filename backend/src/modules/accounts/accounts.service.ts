@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/prisma/prisma.service';
 
 // "Accounts" = Companies within a tenant. The tenant is the "group".
@@ -26,10 +26,12 @@ export class AccountsService {
   }
 
   create(tenantId: string, data: any) {
+    const name = typeof data?.name === 'string' ? data.name.trim() : '';
+    if (!name) throw new BadRequestException('El nombre de la cuenta es requerido');
     return this.prisma.company.create({
       data: {
         tenantId,
-        name: data.name,
+        name,
         taxId: data.taxId || `ACC-${Date.now()}`,
         email: data.email || null,
         phone: data.phone || null,
@@ -41,7 +43,7 @@ export class AccountsService {
   // Switch active company — returns the company; frontend stores it client-side
   async switch(tenantId: string, accountId: string) {
     const company = await this.prisma.company.findFirst({ where: { id: accountId, tenantId } });
-    if (!company) return { ok: false, error: 'Cuenta no encontrada' };
+    if (!company) throw new NotFoundException('Cuenta no encontrada');
     return { ok: true, account: { id: company.id, name: company.name } };
   }
 

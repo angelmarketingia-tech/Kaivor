@@ -19,4 +19,21 @@ export class EventsService {
     events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
     return { events: events.slice(0, 20) };
   }
+
+  async track(tenantId: string, body: any) {
+    const type = body?.eventName ?? body?.type;
+    // Skip silently when there is no real type so client tracking never errors
+    // but we never persist junk "unknown" rows that inflate admin counters.
+    if (typeof type !== 'string' || type.trim() === '') {
+      return { ok: true, skipped: true };
+    }
+    const event = await this.prisma.appEvent.create({
+      data: {
+        tenantId,
+        type: type.trim(),
+        payload: body ?? {},
+      },
+    });
+    return { ok: true, id: event.id };
+  }
 }

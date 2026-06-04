@@ -15,8 +15,10 @@ export class AgentsController {
   }
 
   @Post(':type/ask')
-  async ask(@Request() req: any, @Param('type') type: string, @Body('question') question: string) {
+  async ask(@Request() req: any, @Param('type') type: string, @Body() body: any) {
     const sub = await this.prisma.subscription.findUnique({ where: { tenantId: req.user.tenantId }, select: { plan: true } });
-    return this.agents.ask(req.user.tenantId, type, question, sub?.plan || 'FREE');
+    const question: string = body?.question || '';
+    const history: Array<{ role: string; content: string }> = Array.isArray(body?.history) ? body.history : [];
+    return this.agents.ask(req.user.tenantId, type, question, sub?.plan || 'FREE', history);
   }
 }

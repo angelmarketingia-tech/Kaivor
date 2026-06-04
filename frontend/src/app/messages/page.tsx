@@ -23,7 +23,7 @@ interface Template { id: string; channel: string; name: string; subject: string 
 const STATUS_CLS: Record<string, string> = {
   sent: 'bg-emerald-100 text-emerald-700',
   failed: 'bg-red-100 text-red-700',
-  draft: 'bg-slate-100 text-slate-500',
+  draft: 'surface-2 text-soft',
 };
 
 export default function MessagesPage() {
@@ -98,6 +98,11 @@ export default function MessagesPage() {
         channel: cChannel, customerId: cCustomer.id, destination,
         subject: cChannel === 'email' ? cSubject : undefined, message: cMessage,
       }, { headers });
+      // Backend returns 2xx with {ok:false} when the send failed (e.g. SMTP not configured) — treat as error.
+      if (res.data?.ok === false) {
+        showToast(res.data?.error || res.data?.message || 'No pudimos enviar el mensaje.', 'err');
+        return;
+      }
       if (cChannel === 'whatsapp' && res.data.waUrl) {
         window.open(res.data.waUrl, '_blank');
       }
@@ -124,57 +129,57 @@ export default function MessagesPage() {
 
         <div className="flex items-center justify-between mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Mensajes</h1>
-            <p className="text-sm text-slate-500 mt-0.5">Historial de comunicaciones con tus clientes.</p>
+            <h1 className="text-2xl font-bold text-default">Mensajes</h1>
+            <p className="text-sm text-soft mt-0.5">Historial de comunicaciones con tus clientes.</p>
           </div>
           <button onClick={() => setComposing(true)}
-            className="bg-slate-900 text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-slate-700">
+            className="bg-brand text-ink-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-300">
             + Nuevo mensaje
           </button>
         </div>
 
         {/* Filter */}
-        <div className="flex gap-1 mb-4 bg-slate-100 rounded-xl p-1 w-fit">
+        <div className="flex gap-1 mb-4 surface-2 rounded-xl p-1 w-fit">
           {(['all', 'whatsapp', 'email'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition-colors ${filter === f ? 'surface border text-default shadow-sm' : 'text-soft hover:text-default'}`}>
               {f === 'all' ? 'Todos' : f === 'whatsapp' ? 'WhatsApp' : 'Email'}
             </button>
           ))}
         </div>
 
         {/* List */}
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="surface rounded-xl border overflow-hidden">
           {loading ? (
             <div className="space-y-px">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-slate-50 animate-pulse border-b border-slate-100" />)}
+              {[...Array(4)].map((_, i) => <div key={i} className="h-16 surface-2 animate-pulse border-b border-default" />)}
             </div>
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 px-6">
               <div className="text-4xl mb-3 opacity-30">📨</div>
-              <p className="text-slate-600 font-medium mb-1">Sin mensajes aún</p>
-              <p className="text-sm text-slate-400 mb-4">Envía tu primera factura o recordatorio por WhatsApp o email.</p>
+              <p className="text-default font-medium mb-1">Sin mensajes aún</p>
+              <p className="text-sm text-soft mb-4">Envía tu primera factura o recordatorio por WhatsApp o email.</p>
               <button onClick={() => setComposing(true)}
-                className="bg-slate-900 text-white px-5 py-2 rounded-xl text-sm font-medium hover:bg-slate-700">
+                className="bg-brand text-ink-900 px-5 py-2 rounded-xl text-sm font-semibold hover:bg-brand-300">
                 Enviar mensaje →
               </button>
             </div>
           ) : (
-            <div className="divide-y divide-slate-100">
+            <div className="divide-y divide-[color:var(--border)]">
               {filtered.map(log => (
                 <div key={log.id} className="px-5 py-3.5 flex items-start gap-3">
                   <span className="text-xl mt-0.5">{log.channel === 'whatsapp' ? '💬' : log.channel === 'email' ? '✉️' : '📝'}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-slate-900">{log.destination}</p>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CLS[log.status] ?? 'bg-slate-100 text-slate-500'}`}>
+                      <p className="text-sm font-medium text-default">{log.destination}</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CLS[log.status] ?? 'surface-2 text-soft'}`}>
                         {log.status === 'sent' ? 'Enviado' : log.status === 'failed' ? 'Falló' : log.status}
                       </span>
                     </div>
-                    {log.subject && <p className="text-xs font-medium text-slate-600 mt-0.5">{log.subject}</p>}
-                    <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{log.message}</p>
+                    {log.subject && <p className="text-xs font-medium text-soft mt-0.5">{log.subject}</p>}
+                    <p className="text-xs text-soft mt-0.5 line-clamp-2">{log.message}</p>
                   </div>
-                  <p className="text-xs text-slate-400 whitespace-nowrap">{fmtDate(log.sentAt)}</p>
+                  <p className="text-xs text-soft whitespace-nowrap">{fmtDate(log.sentAt)}</p>
                 </div>
               ))}
             </div>
@@ -184,28 +189,28 @@ export default function MessagesPage() {
         {/* Compose modal */}
         {composing && (
           <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4" onClick={() => setComposing(false)}>
-            <div className="bg-white rounded-xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-              <h3 className="text-sm font-semibold text-slate-900 mb-3">Nuevo mensaje</h3>
+            <div className="surface border rounded-xl p-5 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+              <h3 className="text-sm font-semibold text-default mb-3">Nuevo mensaje</h3>
 
               {/* Channel */}
               <div className="flex gap-2 mb-3">
                 {(['whatsapp', 'email'] as const).map(ch => (
                   <button key={ch} onClick={() => { setCChannel(ch); setCTemplate(null); }}
-                    className={`flex-1 py-2 text-sm rounded-lg border ${cChannel === ch ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 text-slate-600'}`}>
+                    className={`flex-1 py-2 text-sm rounded-lg border ${cChannel === ch ? 'border-ink-900 bg-ink-900 text-white' : 'border-default text-soft'}`}>
                     {ch === 'whatsapp' ? '💬 WhatsApp' : '✉️ Email'}
                   </button>
                 ))}
               </div>
 
               {/* Customer */}
-              <label className="text-xs text-slate-500 block mb-1">Cliente</label>
+              <label className="text-xs text-soft block mb-1">Cliente</label>
               <select value={cCustomer?.id || ''} onChange={e => setCCustomer(customers.find(c => c.id === e.target.value) || null)}
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3">
+                className="w-full surface border rounded-lg px-3 py-2 text-sm text-default mb-3">
                 <option value="">Selecciona un cliente…</option>
                 {customers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
               {cCustomer && (
-                <p className="text-xs text-slate-400 -mt-2 mb-3">
+                <p className="text-xs text-soft -mt-2 mb-3">
                   {cChannel === 'whatsapp'
                     ? (cCustomer.phone ? `WhatsApp: ${cCustomer.phone}` : '⚠ Sin teléfono registrado')
                     : (cCustomer.email ? `Email: ${cCustomer.email}` : '⚠ Sin email registrado')}
@@ -215,9 +220,9 @@ export default function MessagesPage() {
               {/* Template */}
               {channelTemplates.length > 0 && (
                 <>
-                  <label className="text-xs text-slate-500 block mb-1">Plantilla (opcional)</label>
+                  <label className="text-xs text-soft block mb-1">Plantilla (opcional)</label>
                   <select value={cTemplate?.id || ''} onChange={e => pickTemplate(channelTemplates.find(t => t.id === e.target.value) || null)}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3">
+                    className="w-full surface border rounded-lg px-3 py-2 text-sm text-default mb-3">
                     <option value="">Sin plantilla</option>
                     {channelTemplates.map(t => <option key={t.id} value={t.id}>{t.name}</option>)}
                   </select>
@@ -226,16 +231,16 @@ export default function MessagesPage() {
 
               {cChannel === 'email' && (
                 <>
-                  <label className="text-xs text-slate-500 block mb-1">Asunto</label>
+                  <label className="text-xs text-soft block mb-1">Asunto</label>
                   <input type="text" value={cSubject} onChange={e => setCSubject(e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm mb-3" />
+                    className="w-full surface border rounded-lg px-3 py-2 text-sm text-default mb-3" />
                 </>
               )}
 
-              <label className="text-xs text-slate-500 block mb-1">Mensaje</label>
+              <label className="text-xs text-soft block mb-1">Mensaje</label>
               <textarea rows={4} value={cMessage} onChange={e => setCMessage(e.target.value)}
                 placeholder="Escribe tu mensaje…"
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none mb-3" />
+                className="w-full surface border rounded-lg px-3 py-2 text-sm text-default resize-none mb-3" />
 
               <div className="flex gap-2">
                 <button onClick={send} disabled={sending}
@@ -243,7 +248,7 @@ export default function MessagesPage() {
                   {sending ? 'Enviando…' : cChannel === 'whatsapp' ? 'Abrir WhatsApp' : 'Enviar email'}
                 </button>
                 <button onClick={() => setComposing(false)}
-                  className="px-4 py-2 rounded-lg text-sm border border-slate-200 text-slate-600 hover:bg-slate-50">
+                  className="px-4 py-2 rounded-lg text-sm border border-default text-soft hover:bg-surface-2">
                   Cancelar
                 </button>
               </div>

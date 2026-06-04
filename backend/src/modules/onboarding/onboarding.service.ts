@@ -15,22 +15,27 @@ export class OnboardingService {
       this.prisma.invoice.count({ where: { tenantId } }),
       this.prisma.tenantSettings.findUnique({ where: { tenantId } }),
     ]);
-    const steps = {
-      company: true,
-      products: hasProducts > 0,
-      customers: hasCustomers > 1, // beyond Consumidor Final
-      invoice: hasInvoices > 0,
-      email: !!settings?.emailEnabled,
-      whatsapp: !!settings?.whatsappEnabled,
-    };
-    const done = Object.values(steps).filter(Boolean).length;
-    const total = Object.keys(steps).length;
+    const steps = [
+      { id: 'company', label: 'Configura tu empresa', href: '/settings', done: true },
+      { id: 'products', label: 'Agrega tu primer producto', href: '/products', done: hasProducts > 0 },
+      { id: 'customers', label: 'Registra un cliente', href: '/customers', done: hasCustomers > 1 }, // beyond Consumidor Final
+      { id: 'invoice', label: 'Emite tu primera factura', href: '/invoices/create', done: hasInvoices > 0 },
+      { id: 'email', label: 'Activa el envío por email', href: '/settings', done: !!settings?.emailEnabled },
+      { id: 'whatsapp', label: 'Conecta WhatsApp', href: '/settings', done: !!settings?.whatsappEnabled },
+    ];
+    const completed = steps.filter((s) => s.done).length;
+    const total = steps.length;
+    const percentage = Math.round((completed / total) * 100);
+    // Derive completedSteps from the real step flags (the persisted column drifts and nothing reads it).
+    const completedSteps = steps.filter((s) => s.done).map((s) => s.id);
     return {
       currentStep: p.currentStep,
-      completedSteps: p.completedSteps,
-      status: done >= total ? 'completed' : p.status,
+      completedSteps,
+      status: completed >= total ? 'completed' : p.status,
       steps,
-      percent: Math.round((done / total) * 100),
+      completed,
+      total,
+      percentage,
     };
   }
 

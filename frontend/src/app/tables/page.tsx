@@ -6,71 +6,52 @@ import axios from 'axios';
 import AppLayout from '@/components/AppLayout';
 import LoadError from '@/components/LoadError';
 import { useToast } from '@/contexts/ToastContext';
+import TableCanvas from '@/components/tables/TableCanvas';
+import TableDrawer from '@/components/tables/TableDrawer';
+import SummaryHud from '@/components/tables/SummaryHud';
+import AreaTabs from '@/components/tables/AreaTabs';
+import CreateTableModal, { type NewTablePayload } from '@/components/tables/CreateTableModal';
+import CreateZoneModal from '@/components/tables/CreateZoneModal';
+import {
+  type RestaurantTable,
+  type Product,
+  type OrderItem,
+  type CurrentOrder,
+  type TableArea,
+  type TablesSummary,
+  type TableStatus,
+  STATUS_LABEL,
+  money,
+} from '@/components/tables/types';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
-type TableStatus = 'free' | 'occupied' | 'bill_requested';
+type ViewMode = 'map' | 'list';
+type MapTheme = 'light' | 'arcade';
+type EditMode = 'op' | 'edit';
 
-interface OrderItem {
-  name: string;
-  qty: number;
-  unitPrice: number;
-  notes?: string;
-}
-
-interface CurrentOrder {
-  id: string;
-  status: string;
-  items: OrderItem[];
-  subtotal: number;
-  waiter?: string;
-}
-
-interface RestaurantTable {
-  id: string;
-  name: string;
-  zone?: string;
-  seats: number;
-  status: TableStatus;
-  posX?: number;
-  posY?: number;
-  currentOrder?: CurrentOrder | null;
-}
-
-interface Product {
-  id: string;
-  name: string;
-  sku?: string;
-  price: number;
-}
-
-const money = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`;
-
-const STATUS_META: Record<TableStatus, { label: string; ring: string; card: string; dot: string; chip: string }> = {
-  free: {
-    label: 'Libre',
-    ring: 'border-emerald-200 hover:border-emerald-400',
-    card: 'surface',
-    dot: 'bg-emerald-500',
-    chip: 'bg-emerald-50 text-emerald-700',
-  },
-  occupied: {
-    label: 'Ocupada',
-    ring: 'border-amber-300 hover:border-amber-400',
-    card: 'bg-amber-50/60',
-    dot: 'bg-amber-500',
-    chip: 'bg-amber-100 text-amber-800',
-  },
-  bill_requested: {
-    label: 'Pidió cuenta',
-    ring: 'border-brand hover:border-brand-300',
-    card: 'bg-brand-50/60',
-    dot: 'bg-brand',
-    chip: 'bg-brand-50 text-ink-900',
-  },
+const LS = {
+  view: 'tables:view',
+  theme: 'tables:mapTheme',
+  mode: 'tables:mode',
+  grid: 'tables:grid',
 };
 
-const EMPTY_TABLE_FORM = { name: '', zone: '', seats: '4' };
+// privileged roles can edit + delete the layout
+function canEditLayout(u: any): boolean {
+  const r = u?.role;
+  return r === 'admin' || r === 'manager' || r === 'platform_superadmin' || r === 'superadmin' || !!u?.platformRole;
+}
+
+// list-view status meta (kept from original page, extended for new states)
+const LIST_META: Record<TableStatus, { ring: string; card: string; dot: string; chip: string }> = {
+  free: { ring: 'border-emerald-200 hover:border-emerald-400', card: 'surface', dot: 'bg-emerald-500', chip: 'bg-emerald-50 text-emerald-700' },
+  occupied: { ring: 'border-amber-300 hover:border-amber-400', card: 'bg-amber-50/60', dot: 'bg-amber-500', chip: 'bg-amber-100 text-amber-800' },
+  bill_requested: { ring: 'border-brand hover:border-brand-300', card: 'bg-brand-50/60', dot: 'bg-brand', chip: 'bg-brand-50 text-ink-900' },
+  reserved: { ring: 'border-teal-300 hover:border-teal-400', card: 'bg-teal-50/50', dot: 'bg-teal-500', chip: 'bg-teal-100 text-teal-800' },
+  cleaning: { ring: 'border-slate-300 hover:border-slate-400', card: 'surface', dot: 'bg-slate-400', chip: 'bg-slate-100 text-slate-600' },
+  blocked: { ring: 'border-red-300 hover:border-red-400', card: 'bg-red-50/50 opacity-80', dot: 'bg-red-500', chip: 'bg-red-100 text-red-700' },
+};
 
 export default function TablesPage() {
   const router = useRouter();
@@ -78,19 +59,34 @@ export default function TablesPage() {
 
   const [tables, setTables] = useState<RestaurantTable[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [areas, setAreas] = useState<TableArea[]>([]);
+  const [summary, setSummary] = useState<TablesSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  // Alertas del comensal (QR) + QR de mesa
+  const [calls, setCalls] = useState<{ id: string; tableName?: string; type: string; note?: string | null; createdAt: string }[]>([]);
+  const [qrModal, setQrModal] = useState<{ name: string; url: string; dataUrl: string } | null>(null);
 
-  // create-table modal
+  // UI preferences (persisted in localStorage — never the layout itself)
+  const [view, setView] = useState<ViewMode>('map');
+  const [mapTheme, setMapTheme] = useState<MapTheme>('light');
+  const [mode, setMode] = useState<EditMode>('op');
+  const [showGrid, setShowGrid] = useState(true);
+  const [activeArea, setActiveArea] = useState('all');
+
+  // modals
   const [showCreate, setShowCreate] = useState(false);
-  const [tableForm, setTableForm] = useState(EMPTY_TABLE_FORM);
   const [creating, setCreating] = useState(false);
+  const [showZone, setShowZone] = useState(false);
+  const [creatingZone, setCreatingZone] = useState(false);
+  const [savingLayout, setSavingLayout] = useState(false);
 
-  // order side panel
+  // order side panel (logic preserved from original)
   const [activeId, setActiveId] = useState<string | null>(null);
   const [draftItems, setDraftItems] = useState<OrderItem[]>([]);
   const [savingItems, setSavingItems] = useState(false);
-  const [acting, setActing] = useState<string | null>(null); // tracks which action button is busy
+  const [acting, setActing] = useState<string | null>(null);
 
   // add-item controls
   const [productPick, setProductPick] = useState('');
@@ -99,13 +95,49 @@ export default function TablesPage() {
   const [customQty, setCustomQty] = useState('1');
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Protección del arrastre frente al polling: mientras se arrastra o justo tras mover,
+  // el poll NO debe pisar la posición local.
+  const draggingRef = useRef(false);
+  const recentlyMovedRef = useRef<Map<string, number>>(new Map());
+  // Reloj que avanza cada minuto para que el cronómetro de ocupación se vea "vivo".
+  const [, setClockTick] = useState(0);
 
+  // ── preferences bootstrap ──────────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem(LS.view) as ViewMode | null;
+      const t = localStorage.getItem(LS.theme) as MapTheme | null;
+      const m = localStorage.getItem(LS.mode) as EditMode | null;
+      const g = localStorage.getItem(LS.grid);
+      if (v === 'map' || v === 'list') setView(v);
+      if (t === 'light' || t === 'arcade') setMapTheme(t);
+      if (m === 'op' || m === 'edit') setMode(m);
+      if (g != null) setShowGrid(g === '1');
+      const raw = localStorage.getItem('user');
+      if (raw) setUser(JSON.parse(raw));
+    } catch {}
+  }, []);
+
+  const persist = (key: string, val: string) => {
+    try { localStorage.setItem(key, val); } catch {}
+  };
+
+  // ── data ───────────────────────────────────────────────────────────────
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) { router.push('/auth/login'); return; }
     fetchAll(token);
-    pollRef.current = setInterval(() => fetchTables(), 20000);
-    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+    fetchCalls();
+    // Las alertas del comensal se refrescan más seguido (cada 8s) para que el mesero reaccione rápido.
+    const callsId = setInterval(() => fetchCalls(), 8000);
+    pollRef.current = setInterval(() => { fetchTables(); fetchSummary(); }, 20000);
+    // Tick de reloj cada 60s para refrescar el cronómetro de ocupación sin pegarle a la API.
+    const clockId = setInterval(() => setClockTick((n) => n + 1), 60000);
+    return () => {
+      if (pollRef.current) clearInterval(pollRef.current);
+      clearInterval(clockId);
+      clearInterval(callsId);
+    };
   }, [router]);
 
   const authHeaders = () => {
@@ -116,22 +148,27 @@ export default function TablesPage() {
   const fetchAll = async (token?: string) => {
     const t = token ?? localStorage.getItem('token');
     if (!t) return;
+    const headers = { Authorization: `Bearer ${t}` };
     setLoading(true);
     setLoadError(false);
     try {
-      const [tRes, pRes] = await Promise.allSettled([
-        axios.get(`${API}/tables`, { headers: { Authorization: `Bearer ${t}` } }),
-        axios.get(`${API}/products`, { headers: { Authorization: `Bearer ${t}` } }),
+      const [tRes, pRes, aRes, sRes] = await Promise.allSettled([
+        axios.get(`${API}/tables`, { headers }),
+        axios.get(`${API}/products`, { headers }),
+        axios.get(`${API}/tables/areas`, { headers }),
+        axios.get(`${API}/tables/summary`, { headers }),
       ]);
-      if (tRes.status === 'fulfilled') {
-        setTables(tRes.value.data.tables ?? []);
-      } else {
-        setLoadError(true);
-      }
+      if (tRes.status === 'fulfilled') setTables(tRes.value.data.tables ?? tRes.value.data ?? []);
+      else setLoadError(true);
       if (pRes.status === 'fulfilled') {
         const list = Array.isArray(pRes.value.data) ? pRes.value.data : (pRes.value.data.products ?? []);
         setProducts(list);
       }
+      if (aRes.status === 'fulfilled') {
+        const list = Array.isArray(aRes.value.data) ? aRes.value.data : (aRes.value.data.areas ?? []);
+        setAreas(list);
+      }
+      if (sRes.status === 'fulfilled') setSummary(sRes.value.data ?? null);
     } catch {
       setLoadError(true);
     } finally {
@@ -139,40 +176,100 @@ export default function TablesPage() {
     }
   };
 
-  // lightweight refresh used by polling — never toggles the full-page spinner
+  // polling refresh — never toggles the spinner, never clobbers unsaved drafts,
+  // y NUNCA pisa una mesa que se está arrastrando o se acaba de mover.
   const fetchTables = async () => {
     const headers = authHeaders();
     if (!headers) return;
+    // Si el usuario está arrastrando ahora mismo, no refrescamos (evita el salto del nodo).
+    if (draggingRef.current) return;
     try {
       const res = await axios.get(`${API}/tables`, { headers });
-      const next: RestaurantTable[] = res.data.tables ?? [];
-      setTables(next);
-      // keep the open panel in sync if its order changed elsewhere — but don't clobber unsaved drafts
-      setActiveId((cur) => {
-        if (cur && !next.some((t) => t.id === cur)) return null;
-        return cur;
+      const next: RestaurantTable[] = res.data.tables ?? res.data ?? [];
+      const moved = recentlyMovedRef.current;
+      // Conserva la posición local de mesas movidas hace <8s (el PATCH puede no haberse reflejado).
+      const merged = next.map((srv) => {
+        const ts = moved.get(srv.id);
+        if (ts && Date.now() - ts < 8000) {
+          const local = tables.find((t) => t.id === srv.id);
+          if (local) return { ...srv, posX: local.posX, posY: local.posY };
+        }
+        return srv;
       });
-    } catch {
-      // silent: polling shouldn't surface transient errors
-    }
+      setTables(merged);
+      setActiveId((cur) => (cur && !merged.some((t) => t.id === cur) ? null : cur));
+    } catch {}
   };
 
-  const activeTable = tables.find((t) => t.id === activeId) ?? null;
+  const fetchSummary = async () => {
+    const headers = authHeaders();
+    if (!headers) return;
+    try {
+      const res = await axios.get(`${API}/tables/summary`, { headers });
+      setSummary(res.data ?? null);
+    } catch {}
+  };
 
+  const fetchCalls = async () => {
+    const headers = authHeaders();
+    if (!headers) return;
+    try {
+      const res = await axios.get(`${API}/tables/calls`, { headers });
+      setCalls(res.data?.calls ?? []);
+    } catch {}
+  };
+
+  const attendCall = async (id: string) => {
+    const headers = authHeaders();
+    if (!headers) return;
+    setCalls((prev) => prev.filter((c) => c.id !== id)); // optimista
+    try { await axios.post(`${API}/tables/calls/${id}/attend`, {}, { headers }); }
+    catch { fetchCalls(); }
+  };
+
+  // Abre el QR de una mesa (lo genera como imagen para imprimir/compartir).
+  const openQr = async (tableId: string, tableName: string) => {
+    const headers = authHeaders();
+    if (!headers) return;
+    try {
+      const res = await axios.get(`${API}/tables/${tableId}/qr`, { headers });
+      const url = `${window.location.origin}${res.data.path}`;
+      const QR = (await import('qrcode')).default;
+      const dataUrl = await QR.toDataURL(url, { width: 320, margin: 2, color: { dark: '#0B1220', light: '#FFFFFF' } });
+      setQrModal({ name: tableName, url, dataUrl });
+    } catch { toast.error('No pudimos generar el QR.'); }
+  };
+
+  // ── derived ───────────────────────────────────────────────────────────
+  const activeTable = tables.find((t) => t.id === activeId) ?? null;
+  const visibleTables = activeArea === 'all' ? tables : tables.filter((t) => (t.areaId ?? '') === activeArea);
+  const editable = canEditLayout(user);
+  const editing = mode === 'edit' && editable;
+
+  const areaCounts: Record<string, number> = { all: tables.length };
+  for (const a of areas) areaCounts[a.id] = tables.filter((t) => (t.areaId ?? '') === a.id).length;
+
+  const draftSubtotal = draftItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
+
+  // ── order flow (unchanged from original) ────────────────────────────────
   const openTable = async (table: RestaurantTable) => {
+    if (acting) return; // evita doble-submit si una acción está en curso
     setActiveId(table.id);
+    // non-order states open the drawer directly (no order POST)
+    if (table.status === 'reserved' || table.status === 'cleaning' || table.status === 'blocked') {
+      setDraftItems([]);
+      return;
+    }
     const headers = authHeaders();
     if (!headers) return;
     setActing('open');
     try {
-      // POST opens or returns the existing open order, and marks the table occupied
       const res = await axios.post(`${API}/tables/${table.id}/order`, {}, { headers });
       const order: CurrentOrder = res.data;
       setDraftItems((order.items ?? []).map((i) => ({ ...i })));
-      // reflect occupied status locally without waiting for poll
       setTables((prev) => prev.map((t) =>
         t.id === table.id
-          ? { ...t, status: t.status === 'free' ? 'occupied' : t.status, currentOrder: order }
+          ? { ...t, status: t.status === 'free' ? 'occupied' : t.status, currentOrder: order, occupiedSince: t.occupiedSince ?? new Date().toISOString() }
           : t,
       ));
     } catch (err: any) {
@@ -191,8 +288,6 @@ export default function TablesPage() {
     setCustomPrice('');
     setCustomQty('1');
   };
-
-  const draftSubtotal = draftItems.reduce((s, i) => s + i.unitPrice * i.qty, 0);
 
   const addProduct = () => {
     if (!productPick) return;
@@ -232,11 +327,8 @@ export default function TablesPage() {
     });
   };
 
-  const removeItem = (idx: number) => {
-    setDraftItems((prev) => prev.filter((_, i) => i !== idx));
-  };
+  const removeItem = (idx: number) => setDraftItems((prev) => prev.filter((_, i) => i !== idx));
 
-  // persist current draft items to the open order (recomputes subtotal server-side)
   const saveItems = async (opts?: { status?: string; silent?: boolean }): Promise<boolean> => {
     if (!activeTable) return false;
     const headers = authHeaders();
@@ -247,9 +339,7 @@ export default function TablesPage() {
       if (opts?.status) body.status = opts.status;
       const res = await axios.patch(`${API}/tables/${activeTable.id}/order`, body, { headers });
       const order: CurrentOrder = res.data;
-      setTables((prev) => prev.map((t) =>
-        t.id === activeTable.id ? { ...t, currentOrder: order } : t,
-      ));
+      setTables((prev) => prev.map((t) => (t.id === activeTable.id ? { ...t, currentOrder: order } : t)));
       if (Array.isArray(order.items)) setDraftItems(order.items.map((i) => ({ ...i })));
       if (!opts?.silent) toast.success('Pedido actualizado.');
       return true;
@@ -269,15 +359,15 @@ export default function TablesPage() {
   };
 
   const requestBill = async () => {
-    if (!activeTable) return;
+    if (!activeTable || acting) return;
+    const id = activeTable.id; // id estable (evita stale-target tras el await)
     const headers = authHeaders();
     if (!headers) return;
     setActing('bill');
     try {
-      await axios.patch(`${API}/tables/${activeTable.id}/order`, { status: 'bill_requested' }, { headers });
-      setTables((prev) => prev.map((t) =>
-        t.id === activeTable.id ? { ...t, status: 'bill_requested' } : t,
-      ));
+      // Persistir los ítems del borrador JUNTO con el cambio de estado (no perder ediciones).
+      await axios.patch(`${API}/tables/${id}/order`, { items: draftItems, status: 'bill_requested' }, { headers });
+      setTables((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'bill_requested' } : t)));
       toast.success('Cuenta solicitada.');
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? 'No pudimos pedir la cuenta.');
@@ -287,69 +377,208 @@ export default function TablesPage() {
   };
 
   const chargeAndClose = async () => {
-    if (!activeTable) return;
+    if (!activeTable || acting) return;
+    const id = activeTable.id;
+    const name = activeTable.name;
     const headers = authHeaders();
     if (!headers) return;
-    if (draftItems.length === 0) { toast.error('Agrega al menos un producto antes de cobrar.'); return; }
+    // El cobro se basa en la orden REAL del servidor (que ya tiene los ítems del mesero
+    // y/o del cliente por QR), NO en el borrador local. Solo bloqueamos si de verdad no hay nada.
+    const hasServerItems = (activeTable.currentOrder?.items?.length ?? 0) > 0;
+    if (draftItems.length === 0 && !hasServerItems) {
+      toast.error('La mesa no tiene productos para cobrar.');
+      return;
+    }
     setActing('close');
     try {
-      // make sure the latest items are saved before billing
-      await axios.patch(`${API}/tables/${activeTable.id}/order`, { items: draftItems }, { headers });
-
-      // best-effort: create the invoice from the order
-      try {
-        await axios.post(
-          `${API}/invoices`,
-          {
-            tableNumber: activeTable.name,
-            items: draftItems.map((i) => ({
-              name: i.name,
-              quantity: i.qty,
-              unitPrice: i.unitPrice,
-              notes: i.notes,
-            })),
-          },
-          { headers },
-        );
-      } catch {
-        // if invoice creation isn't wired, still close the table below
+      // 1) Si el mesero editó el borrador, guárdalo (merge en backend protege ítems del cliente).
+      //    Si el borrador está vacío pero el servidor tiene ítems, NO mandamos items (no los borramos).
+      if (draftItems.length > 0) {
+        await axios.patch(`${API}/tables/${id}/order`, { items: draftItems }, { headers });
       }
-
-      await axios.post(`${API}/tables/${activeTable.id}/close`, {}, { headers });
-
-      setTables((prev) => prev.map((t) =>
-        t.id === activeTable.id ? { ...t, status: 'free', currentOrder: null } : t,
-      ));
-      toast.success(`Mesa ${activeTable.name} cobrada y liberada.`);
+      // 2) Cerrar la mesa: ESTE endpoint genera la factura (sin cliente = Consumidor Final) + inventario.
+      const res = await axios.post(`${API}/tables/${id}/close`, { paymentMethod: 'cash' }, { headers });
+      setTables((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'free', currentOrder: null, occupiedSince: null } : t)));
+      const inv = res.data?.invoiceNumber ? ` (${res.data.invoiceNumber})` : '';
+      toast.success(`Mesa ${name} cobrada y liberada${inv}.`);
+      fetchSummary();
       closePanel();
     } catch (err: any) {
-      toast.error(err.response?.data?.message ?? 'No pudimos cerrar la mesa.');
+      // Si falla la factura/cierre, NO liberamos la mesa: el usuario ve el error y reintenta.
+      toast.error(err.response?.data?.message ?? 'No pudimos cobrar la mesa. La mesa sigue abierta.');
     } finally {
       setActing(null);
     }
   };
 
-  const handleCreateTable = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const name = tableForm.name.trim();
-    if (!name) { toast.error('El nombre de la mesa es requerido.'); return; }
+  // ── new: status change (PATCH /tables/:id/status) ──────────────────────
+  const setTableStatus = async (status: TableStatus) => {
+    if (!activeTable || acting) return;
+    const id = activeTable.id;
+    const headers = authHeaders();
+    if (!headers) return;
+    const prevStatus = activeTable.status;
+    setActing('status');
+    setTables((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+    try {
+      await axios.patch(`${API}/tables/${id}/status`, { status }, { headers });
+      toast.success(`Mesa marcada: ${STATUS_LABEL[status]}.`);
+      if (status === 'free' || status === 'cleaning') { fetchSummary(); closePanel(); }
+    } catch (err: any) {
+      setTables((prev) => prev.map((t) => (t.id === id ? { ...t, status: prevStatus } : t)));
+      toast.error(err.response?.data?.message ?? 'No pudimos cambiar el estado.');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  // Señales de arrastre para que el polling no pise la posición.
+  const onDragStart = () => { draggingRef.current = true; };
+  const onDragEnd = () => { draggingRef.current = false; };
+
+  // ── new: move a node (optimistic + rollback) ───────────────────────────
+  const moveTable = async (id: string, posX: number, posY: number) => {
+    draggingRef.current = false;
+    recentlyMovedRef.current.set(id, Date.now()); // protege esta posición ~8s del poll
+    const headers = authHeaders();
+    if (!headers) return;
+    const prev = tables.find((t) => t.id === id);
+    const prevPos = prev ? { posX: prev.posX, posY: prev.posY } : null;
+    setTables((cur) => cur.map((t) => (t.id === id ? { ...t, posX, posY } : t)));
+    try {
+      await axios.patch(`${API}/tables/${id}/position`, { posX, posY }, { headers });
+      toast.success('Posición guardada.');
+    } catch (err: any) {
+      if (prevPos) setTables((cur) => cur.map((t) => (t.id === id ? { ...t, ...prevPos } : t)));
+      recentlyMovedRef.current.delete(id);
+      toast.error('No pudimos mover la mesa. Reintenta.');
+    }
+  };
+
+  // ── new: resize / rotate a node (optimistic + rollback) ─────────────────
+  // Reusa el patrón de moveTable: PATCH /tables/:id/position con width/height/rotation.
+  const resizeTable = async (id: string, width: number, height: number) => {
+    recentlyMovedRef.current.set(id, Date.now()); // protege del poll ~8s
+    const headers = authHeaders();
+    if (!headers) return;
+    const prev = tables.find((t) => t.id === id);
+    const prevGeo = prev ? { width: prev.width, height: prev.height } : null;
+    setTables((cur) => cur.map((t) => (t.id === id ? { ...t, width, height } : t)));
+    try {
+      await axios.patch(`${API}/tables/${id}/position`, { width, height }, { headers });
+    } catch {
+      if (prevGeo) setTables((cur) => cur.map((t) => (t.id === id ? { ...t, ...prevGeo } : t)));
+      recentlyMovedRef.current.delete(id);
+      toast.error('No pudimos cambiar el tamaño. Reintenta.');
+    }
+  };
+
+  const rotateTable = async (id: string, rotation: number) => {
+    recentlyMovedRef.current.set(id, Date.now());
+    const headers = authHeaders();
+    if (!headers) return;
+    const prev = tables.find((t) => t.id === id);
+    const prevRot = prev ? prev.rotation ?? 0 : 0;
+    setTables((cur) => cur.map((t) => (t.id === id ? { ...t, rotation } : t)));
+    try {
+      await axios.patch(`${API}/tables/${id}/position`, { rotation }, { headers });
+    } catch {
+      setTables((cur) => cur.map((t) => (t.id === id ? { ...t, rotation: prevRot } : t)));
+      recentlyMovedRef.current.delete(id);
+      toast.error('No pudimos girar la mesa. Reintenta.');
+    }
+  };
+
+  // ── new: unir mesas (POST /tables/merge) ────────────────────────────────
+  const mergeTables = async (targetId: string, sourceIds: string[]) => {
+    if (!sourceIds.length || acting) return;
+    const headers = authHeaders();
+    if (!headers) return;
+    setActing('merge');
+    try {
+      await axios.post(`${API}/tables/merge`, { targetId, sourceIds }, { headers });
+      toast.success('Mesas unidas.');
+      // Si la mesa activa quedó cerrada por la unión, refrescamos su orden.
+      if (activeId === targetId) {
+        try {
+          const res = await axios.post(`${API}/tables/${targetId}/order`, {}, { headers });
+          const order: CurrentOrder = res.data;
+          setDraftItems((order.items ?? []).map((i) => ({ ...i })));
+        } catch {}
+      }
+      fetchTables();
+      fetchSummary();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'No pudimos unir las mesas.');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  // ── new: dividir cuenta (POST /tables/:id/split) ────────────────────────
+  const splitBill = async (itemIndexes: number[], paymentMethod: string) => {
+    if (!activeTable || !itemIndexes.length || acting) return;
+    const id = activeTable.id;
+    const name = activeTable.name;
+    const headers = authHeaders();
+    if (!headers) return;
+    setActing('split');
+    try {
+      // Persistir los ítems vigentes antes de dividir (no perder ediciones del borrador).
+      await axios.patch(`${API}/tables/${id}/order`, { items: draftItems }, { headers });
+      const res = await axios.post(`${API}/tables/${id}/split`, { itemIndexes, paymentMethod }, { headers });
+      const inv = res.data?.invoiceNumber ? ` (${res.data.invoiceNumber})` : '';
+      toast.success(`Cuenta dividida cobrada${inv}.`);
+      // ¿Quedan ítems? El backend indica si la mesa sigue abierta o se liberó.
+      const stillOpen = res.data?.tableStatus
+        ? res.data.tableStatus !== 'free'
+        : Array.isArray(res.data?.remainingItems) && res.data.remainingItems.length > 0;
+      fetchSummary();
+      if (stillOpen) {
+        // Recargar el borrador con lo que quedó en la mesa.
+        try {
+          const ord = await axios.post(`${API}/tables/${id}/order`, {}, { headers });
+          const order: CurrentOrder = ord.data;
+          setDraftItems((order.items ?? []).map((i) => ({ ...i })));
+          setTables((prev) => prev.map((t) => (t.id === id ? { ...t, currentOrder: order } : t)));
+        } catch { fetchTables(); }
+      } else {
+        setTables((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'free', currentOrder: null, occupiedSince: null } : t)));
+        toast.success(`Mesa ${name} liberada.`);
+        closePanel();
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'No pudimos dividir la cuenta.');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  // ── new: create table with shape/seats/zone ─────────────────────────────
+  const handleCreateTable = async (payload: NewTablePayload) => {
+    if (!payload.name) { toast.error('El nombre de la mesa es requerido.'); return; }
     const headers = authHeaders();
     if (!headers) return;
     setCreating(true);
     try {
-      await axios.post(
-        `${API}/tables`,
-        {
-          name,
-          zone: tableForm.zone.trim() || undefined,
-          seats: tableForm.seats ? parseInt(tableForm.seats, 10) : undefined,
-        },
-        { headers },
-      );
+      // drop near top-left so it's visible; user drags it into place in edit mode
+      const offset = (tables.length % 6) * 24;
+      await axios.post(`${API}/tables`, {
+        name: payload.name,
+        zone: payload.zone,
+        areaId: payload.areaId,
+        shape: payload.shape,
+        seats: payload.seats,
+        width: payload.width,
+        height: payload.height,
+        posX: 24 + offset,
+        posY: 24 + offset,
+        rotation: 0,
+      }, { headers });
       toast.success('Mesa creada.');
-      setTableForm(EMPTY_TABLE_FORM);
       setShowCreate(false);
       fetchTables();
+      fetchSummary();
     } catch (err: any) {
       toast.error(err.response?.data?.message ?? 'No pudimos crear la mesa.');
     } finally {
@@ -357,302 +586,359 @@ export default function TablesPage() {
     }
   };
 
-  const counts = {
-    free: tables.filter((t) => t.status === 'free').length,
-    occupied: tables.filter((t) => t.status === 'occupied').length,
-    bill: tables.filter((t) => t.status === 'bill_requested').length,
+  // ── new: delete table (admin/manager only) ──────────────────────────────
+  const deleteTable = async () => {
+    if (!activeTable || !editable) return;
+    if (!window.confirm(`¿Eliminar la mesa "${activeTable.name}"? Esta acción no se puede deshacer.`)) return;
+    const headers = authHeaders();
+    if (!headers) return;
+    setActing('delete');
+    try {
+      await axios.delete(`${API}/tables/${activeTable.id}`, { headers });
+      setTables((prev) => prev.filter((t) => t.id !== activeTable.id));
+      toast.success('Mesa eliminada.');
+      closePanel();
+      fetchSummary();
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'No pudimos eliminar la mesa.');
+    } finally {
+      setActing(null);
+    }
   };
+
+  // Duplicar mesa: crea una copia con los mismos atributos, desplazada para no encimarse.
+  const duplicateTable = async () => {
+    if (!activeTable || !editable || acting) return;
+    const headers = authHeaders();
+    if (!headers) return;
+    setActing('duplicate');
+    try {
+      const base = activeTable;
+      // nombre " (copia)" o incrementa un sufijo numérico si ya termina en número
+      const copyName = /\d+$/.test(base.name)
+        ? base.name.replace(/(\d+)$/, (m) => String(Number(m) + 1))
+        : `${base.name} (copia)`;
+      const res = await axios.post(`${API}/tables`, {
+        name: copyName,
+        areaId: base.areaId ?? undefined,
+        shape: base.shape,
+        seats: base.seats,
+        width: base.width,
+        height: base.height,
+        rotation: base.rotation,
+        posX: (base.posX ?? 0) + 32,
+        posY: (base.posY ?? 0) + 32,
+      }, { headers });
+      if (res.data?.id) {
+        setTables((prev) => [...prev, { ...res.data, currentOrder: null }]);
+        toast.success(`Mesa duplicada: ${copyName}`);
+        setActiveId(res.data.id); // selecciona la nueva copia
+      }
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'No pudimos duplicar la mesa.');
+    } finally {
+      setActing(null);
+    }
+  };
+
+  // ── new: create zone (POST /tables/areas) ───────────────────────────────
+  const handleCreateZone = async (name: string, color: string) => {
+    const headers = authHeaders();
+    if (!headers) return;
+    setCreatingZone(true);
+    try {
+      const res = await axios.post(`${API}/tables/areas`, { name, color }, { headers });
+      if (res.data?.id) {
+        setAreas((prev) => [...prev, res.data]);
+      } else {
+        // Si la respuesta no trae la zona, recargamos desde el servidor (sin ids inventados).
+        const aRes = await axios.get(`${API}/tables/areas`, { headers });
+        setAreas(Array.isArray(aRes.data) ? aRes.data : (aRes.data.areas ?? []));
+      }
+      toast.success('Zona creada.');
+      setShowZone(false);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'No pudimos crear la zona.');
+    } finally {
+      setCreatingZone(false);
+    }
+  };
+
+  // ── new: save layout (POST /tables/layout/save) ─────────────────────────
+  const saveLayout = async () => {
+    const headers = authHeaders();
+    if (!headers) return;
+    setSavingLayout(true);
+    try {
+      await axios.post(`${API}/tables/layout/save`, {
+        name: 'default',
+        tables: tables.map((t) => ({
+          id: t.id,
+          posX: t.posX ?? 0,
+          posY: t.posY ?? 0,
+          width: t.width,
+          height: t.height,
+          rotation: t.rotation ?? 0,
+          areaId: t.areaId,
+        })),
+      }, { headers });
+      toast.success('Distribución guardada.');
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? 'No pudimos guardar la distribución.');
+    } finally {
+      setSavingLayout(false);
+    }
+  };
+
+  // ── toggle helpers ──────────────────────────────────────────────────────
+  const setViewMode = (v: ViewMode) => { setView(v); persist(LS.view, v); };
+  const setTheme = (t: MapTheme) => { setMapTheme(t); persist(LS.theme, t); };
+  const setEditMode = (m: EditMode) => { setMode(m); persist(LS.mode, m); };
+  const toggleGrid = () => { setShowGrid((g) => { persist(LS.grid, g ? '0' : '1'); return !g; }); };
+
+  // small segmented-control button
+  const Seg = ({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) => (
+    <button
+      onClick={onClick}
+      className={`px-3 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+        active ? 'bg-brand text-ink-900' : 'text-soft hover:text-default'
+      }`}
+      style={{ minHeight: 40 }}
+    >
+      {children}
+    </button>
+  );
 
   return (
     <AppLayout>
-      <div className="p-6 max-w-6xl mx-auto">
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto">
         {/* Header */}
-        <div className="flex items-start justify-between gap-4 mb-6">
+        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
           <div>
             <h1 className="text-2xl font-bold text-default">Mesas</h1>
             <p className="text-sm text-soft mt-0.5">
-              {tables.length === 0
-                ? 'Gestiona el salón en tiempo real'
-                : `${tables.length} mesa${tables.length !== 1 ? 's' : ''} · actualiza cada 20s`}
+              {tables.length === 0 ? 'Diseña y opera tu salón en tiempo real' : `${tables.length} mesa${tables.length !== 1 ? 's' : ''} · actualiza cada 20s`}
             </p>
           </div>
-          <button
-            onClick={() => setShowCreate(true)}
-            className="bg-brand text-ink-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-brand-300 transition-colors whitespace-nowrap"
-          >
-            + Mesa
-          </button>
+
+          {/* Toggles */}
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-0.5 surface border rounded-xl p-0.5">
+              <Seg active={view === 'map'} onClick={() => setViewMode('map')}>Mapa</Seg>
+              <Seg active={view === 'list'} onClick={() => setViewMode('list')}>Lista</Seg>
+            </div>
+            {view === 'map' && (
+              <div className="flex items-center gap-0.5 surface border rounded-xl p-0.5">
+                <Seg active={mapTheme === 'light'} onClick={() => setTheme('light')}>Claro</Seg>
+                <Seg active={mapTheme === 'arcade'} onClick={() => setTheme('arcade')}>Arcade</Seg>
+              </div>
+            )}
+            {editable && view === 'map' && (
+              <div className="flex items-center gap-0.5 surface border rounded-xl p-0.5">
+                <Seg active={mode === 'op'} onClick={() => setEditMode('op')}>Operación</Seg>
+                <Seg active={mode === 'edit'} onClick={() => setEditMode('edit')}>Edición</Seg>
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Legend / quick stats */}
-        {tables.length > 0 && (
-          <div className="flex flex-wrap items-center gap-2.5 mb-5">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 text-xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" /> {counts.free} libres
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-100 text-amber-800 text-xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-amber-500" /> {counts.occupied} ocupadas
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 text-ink-900 text-xs font-medium">
-              <span className="w-2 h-2 rounded-full bg-brand" /> {counts.bill} pidieron cuenta
-            </span>
+        {/* Alertas del comensal (QR): llamar mesero / pedir cuenta */}
+        {calls.length > 0 && (
+          <div className="mb-3 rounded-xl border p-3" style={{ background: 'rgba(163,204,57,0.10)', borderColor: 'rgba(163,204,57,0.35)' }}>
+            <p className="text-xs font-semibold text-default mb-2">🔔 {calls.length} llamado{calls.length > 1 ? 's' : ''} de mesas</p>
+            <div className="flex flex-wrap gap-2">
+              {calls.map((c) => {
+                // El detalle del pedido listo viene en note como "Pedido listo: 2× Pizza, 1× Coca (sin hielo)".
+                const detail = (c.type === 'ready' || c.type === 'order') && c.note
+                  ? c.note.replace(/^Pedido listo:\s*/i, '')
+                  : null;
+                const ready = c.type === 'ready';
+                return (
+                  <div
+                    key={c.id}
+                    className="flex items-start gap-2 surface border rounded-lg pl-3 pr-1 py-1.5"
+                    style={ready ? { borderColor: 'rgba(163,204,57,0.6)', background: 'rgba(163,204,57,0.12)' } : { borderColor: 'var(--border)' }}
+                  >
+                    <span className="text-sm text-default max-w-[260px]">
+                      <span className="block">
+                        {c.type === 'bill' ? '🧾' : ready ? '🍳' : c.type === 'order' ? '🍽️' : '🙋'} <strong>{c.tableName || 'Mesa'}</strong>
+                        <span className="text-soft"> · {c.type === 'bill' ? 'pide cuenta' : ready ? 'pedido listo' : c.type === 'order' ? 'pidió desde el QR' : 'llama mesero'}</span>
+                      </span>
+                      {detail && <span className="block text-xs text-soft mt-0.5 leading-snug">{detail}</span>}
+                    </span>
+                    <button onClick={() => attendCall(c.id)} className="text-xs font-semibold bg-brand text-ink-900 px-2.5 py-1.5 rounded-md hover:bg-brand-300 shrink-0" style={{ minHeight: 36 }}>
+                      {ready ? 'Recogido' : 'Atender'}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           </div>
+        )}
+
+        {/* HUD */}
+        <SummaryHud summary={summary} loading={loading} />
+
+        {/* Edit toolbar (map + edit mode) */}
+        {view === 'map' && editing && (
+          <div className="flex flex-wrap items-center gap-2 mb-3 p-2.5 rounded-xl border border-dashed surface-2" style={{ borderColor: 'rgba(163,204,57,0.4)' }}>
+            <span className="text-xs font-semibold text-soft px-1">✏️ Edición:</span>
+            <button onClick={() => setShowCreate(true)} className="px-4 py-2 bg-brand text-ink-900 rounded-lg text-sm font-semibold hover:bg-brand-300 shadow-sm transition-colors" style={{ minHeight: 44 }}>
+              + Mesa
+            </button>
+            <button onClick={saveLayout} disabled={savingLayout} className="px-4 py-2 bg-ink-900 text-white rounded-lg text-sm font-medium hover:bg-ink-700 disabled:opacity-50 transition-colors" style={{ minHeight: 44 }}>
+              {savingLayout ? 'Guardando…' : '💾 Guardar distribución'}
+            </button>
+            <button onClick={toggleGrid} className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${showGrid ? 'border-brand text-ink-900 bg-brand-50' : 'border-default text-soft hover:text-default'}`} style={{ minHeight: 44 }}>
+              Cuadrícula {showGrid ? 'on' : 'off'}
+            </button>
+            <span className="text-xs text-soft ml-auto px-1">Arrastra las mesas para acomodar tu local · snap 8px</span>
+          </div>
+        )}
+
+        {/* Area tabs */}
+        {(areas.length > 0 || editing) && view === 'map' && (
+          <AreaTabs
+            areas={areas}
+            activeArea={activeArea}
+            counts={areaCounts}
+            editing={editing}
+            onSelect={setActiveArea}
+            onCreate={() => setShowZone(true)}
+          />
         )}
 
         {/* Body */}
         {loadError ? (
           <LoadError onRetry={() => fetchAll()} />
         ) : loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {[...Array(8)].map((_, i) => (
-              <div key={i} className="h-36 surface-2 animate-pulse rounded-2xl" />
-            ))}
-          </div>
-        ) : tables.length === 0 ? (
-          <div className="surface rounded-2xl border text-center py-20 px-6">
-            <div className="text-5xl mb-4">🍽️</div>
-            <p className="text-default font-semibold mb-1">Aún no tienes mesas</p>
-            <p className="text-sm text-soft mb-5 max-w-sm mx-auto">
-              Crea tu primera mesa para empezar a tomar pedidos y cobrar directamente desde el salón.
-            </p>
-            <button
-              onClick={() => setShowCreate(true)}
-              className="inline-block bg-brand text-ink-900 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-300"
-            >
-              Crear primera mesa →
-            </button>
-          </div>
+          <div className="rounded-2xl surface-2 animate-pulse" style={{ height: '70vh' }} />
+        ) : view === 'list' ? (
+          // ── LIST (fallback, original card grid extended) ──
+          tables.length === 0 ? (
+            <div className="surface rounded-2xl border text-center py-20 px-6">
+              <div className="text-5xl mb-4">🍽️</div>
+              <p className="text-default font-semibold mb-1">Aún no tienes mesas</p>
+              <p className="text-sm text-soft mb-5 max-w-sm mx-auto">Crea tu primera mesa para empezar a tomar pedidos y cobrar desde el salón.</p>
+              <button onClick={() => setShowCreate(true)} className="inline-block bg-brand text-ink-900 px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-brand-300">
+                Crear primera mesa →
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {visibleTables.map((t) => {
+                const meta = LIST_META[t.status];
+                const total = t.currentOrder?.subtotal ?? 0;
+                return (
+                  <button key={t.id} onClick={() => openTable(t)} className={`text-left rounded-2xl border p-4 transition-all hover:shadow-md ${meta.ring} ${meta.card}`}>
+                    <div className="flex items-start justify-between mb-2">
+                      <span className="text-base font-bold text-default truncate">{t.name}</span>
+                      <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 ${meta.dot}`} />
+                    </div>
+                    <div className="flex items-center gap-2 mb-3 text-xs text-soft">
+                      {t.zone && <span className="truncate">{t.zone}</span>}
+                      {t.zone && <span className="text-soft">·</span>}
+                      <span className="whitespace-nowrap">{t.seats} 🪑</span>
+                    </div>
+                    <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium ${meta.chip}`}>{STATUS_LABEL[t.status]}</span>
+                    {(t.status === 'occupied' || t.status === 'bill_requested') && (
+                      <p className="mt-2 text-sm font-semibold text-default">{money(total)}</p>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-            {tables.map((t) => {
-              const meta = STATUS_META[t.status];
-              const total = t.currentOrder?.subtotal ?? 0;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => openTable(t)}
-                  className={`text-left rounded-2xl border p-4 transition-all hover:shadow-md ${meta.ring} ${meta.card}`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="text-base font-bold text-default truncate">{t.name}</span>
-                    <span className={`w-2.5 h-2.5 rounded-full flex-shrink-0 mt-1.5 ${meta.dot}`} />
-                  </div>
-                  <div className="flex items-center gap-2 mb-3 text-xs text-soft">
-                    {t.zone && <span className="truncate">{t.zone}</span>}
-                    {t.zone && <span className="text-soft">·</span>}
-                    <span className="whitespace-nowrap">{t.seats} 🪑</span>
-                  </div>
-                  <span className={`inline-block px-2 py-0.5 rounded-md text-[11px] font-medium ${meta.chip}`}>
-                    {meta.label}
-                  </span>
-                  {t.status !== 'free' && (
-                    <p className="mt-2 text-sm font-semibold text-default">{money(total)}</p>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          // ── MAP ──
+          <TableCanvas
+            tables={visibleTables}
+            theme={mapTheme}
+            editing={editing}
+            showGrid={showGrid}
+            onSelect={openTable}
+            onMove={moveTable}
+            onDragStartSignal={onDragStart}
+            onDragEndSignal={onDragEnd}
+            onAddFirst={editable ? () => { setEditMode('edit'); setShowCreate(true); } : undefined}
+          />
         )}
       </div>
 
       {/* Create-table modal */}
       {showCreate && (
-        <div
-          className="fixed inset-0 z-50 bg-ink-900/50 flex items-center justify-center p-4"
-          onClick={() => !creating && setShowCreate(false)}
-        >
-          <div
-            className="surface rounded-2xl border w-full max-w-md p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h2 className="text-lg font-bold text-default mb-4">Nueva mesa</h2>
-            <form onSubmit={handleCreateTable} className="space-y-4">
-              <div>
-                <label className="block text-xs font-medium text-default mb-1">Nombre / número *</label>
-                <input
-                  value={tableForm.name}
-                  onChange={(e) => setTableForm({ ...tableForm, name: e.target.value })}
-                  placeholder="Mesa 1"
-                  autoFocus
-                  className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-default mb-1">Zona</label>
-                  <input
-                    value={tableForm.zone}
-                    onChange={(e) => setTableForm({ ...tableForm, zone: e.target.value })}
-                    placeholder="Terraza"
-                    className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-default mb-1">Sillas</label>
-                  <input
-                    type="number" min={1}
-                    value={tableForm.seats}
-                    onChange={(e) => setTableForm({ ...tableForm, seats: e.target.value })}
-                    className="w-full surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-1">
-                <button
-                  type="button"
-                  onClick={() => { setShowCreate(false); setTableForm(EMPTY_TABLE_FORM); }}
-                  className="px-4 py-2 text-sm text-soft hover:text-default border border-default rounded-lg"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit" disabled={creating}
-                  className="px-5 py-2 bg-brand text-ink-900 rounded-lg text-sm font-semibold hover:bg-brand-300 disabled:opacity-50"
-                >
-                  {creating ? 'Creando...' : 'Crear mesa'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <CreateTableModal
+          areas={areas}
+          defaultAreaId={activeArea}
+          submitting={creating}
+          onCancel={() => setShowCreate(false)}
+          onSubmit={handleCreateTable}
+        />
       )}
 
-      {/* Order side panel */}
+      {/* Create-zone modal */}
+      {showZone && (
+        <CreateZoneModal submitting={creatingZone} onCancel={() => setShowZone(false)} onSubmit={handleCreateZone} />
+      )}
+
+      {/* Contextual drawer / bottom sheet */}
       {activeTable && (
-        <div className="fixed inset-0 z-50 flex justify-end">
-          <div className="absolute inset-0 bg-ink-900/50" onClick={closePanel} />
-          <div className="relative app-bg w-full max-w-md h-full shadow-2xl flex flex-col">
-            {/* Panel header */}
-            <div className="surface border-b px-5 py-4 flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-default">{activeTable.name}</h2>
-                <p className="text-xs text-soft mt-0.5">
-                  {activeTable.zone ? `${activeTable.zone} · ` : ''}{activeTable.seats} sillas
-                  {activeTable.currentOrder?.waiter ? ` · ${activeTable.currentOrder.waiter}` : ''}
-                </p>
-              </div>
-              <button onClick={closePanel} className="text-soft hover:text-default text-xl leading-none px-1">×</button>
-            </div>
+        <TableDrawer
+          table={activeTable}
+          products={products}
+          draftItems={draftItems}
+          draftSubtotal={draftSubtotal}
+          opening={acting === 'open'}
+          acting={acting}
+          savingItems={savingItems}
+          productPick={productPick}
+          setProductPick={setProductPick}
+          customName={customName}
+          setCustomName={setCustomName}
+          customPrice={customPrice}
+          setCustomPrice={setCustomPrice}
+          customQty={customQty}
+          setCustomQty={setCustomQty}
+          onAddProduct={addProduct}
+          onAddCustom={addCustom}
+          onChangeQty={changeQty}
+          onRemoveItem={removeItem}
+          onSaveItems={() => saveItems()}
+          onSendToKitchen={sendToKitchen}
+          onRequestBill={requestBill}
+          onChargeAndClose={chargeAndClose}
+          onSetStatus={setTableStatus}
+          onDelete={editable ? deleteTable : undefined}
+          onDuplicate={editable ? duplicateTable : undefined}
+          onResize={editable ? resizeTable : undefined}
+          onRotate={editable ? rotateTable : undefined}
+          occupiedTables={tables.filter((t) => (t.status === 'occupied' || t.status === 'bill_requested') && t.id !== activeTable.id)}
+          onMerge={mergeTables}
+          onSplit={splitBill}
+          onQr={() => openQr(activeTable.id, activeTable.name)}
+          editing={editing}
+          onClose={closePanel}
+        />
+      )}
 
-            {/* Add item controls */}
-            <div className="surface border-b px-5 py-4 space-y-3">
-              {products.length > 0 && (
-                <div className="flex gap-2">
-                  <select
-                    value={productPick}
-                    onChange={(e) => setProductPick(e.target.value)}
-                    className="flex-1 surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                  >
-                    <option value="">Elegir del catálogo…</option>
-                    {products.map((p) => (
-                      <option key={p.id} value={p.id}>{p.name} — {money(p.price)}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={addProduct}
-                    disabled={!productPick}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 disabled:opacity-40"
-                  >
-                    Añadir
-                  </button>
-                </div>
-              )}
-              <div className="flex gap-2">
-                <input
-                  value={customName}
-                  onChange={(e) => setCustomName(e.target.value)}
-                  placeholder="Producto libre"
-                  className="flex-1 min-w-0 surface border rounded-lg px-3 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                />
-                <input
-                  value={customPrice}
-                  onChange={(e) => setCustomPrice(e.target.value)}
-                  placeholder="Precio" inputMode="decimal"
-                  className="w-20 surface border rounded-lg px-2 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                />
-                <input
-                  value={customQty}
-                  onChange={(e) => setCustomQty(e.target.value)}
-                  type="number" min={1}
-                  className="w-14 surface border rounded-lg px-2 py-2 text-sm text-default focus:outline-none focus:ring-2 ring-brand"
-                />
-                <button
-                  onClick={addCustom}
-                  className="px-3 py-2 bg-ink-900 text-white rounded-lg text-sm font-medium hover:bg-ink-700"
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {/* Items list */}
-            <div className="flex-1 overflow-y-auto px-5 py-4">
-              {acting === 'open' ? (
-                <div className="space-y-2">
-                  {[...Array(3)].map((_, i) => <div key={i} className="h-12 surface rounded-lg animate-pulse" />)}
-                </div>
-              ) : draftItems.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="text-3xl mb-2 opacity-30">🧾</div>
-                  <p className="text-sm text-soft">Sin productos aún.</p>
-                  <p className="text-xs text-soft mt-0.5">Agrega ítems del catálogo o escríbelos arriba.</p>
-                </div>
-              ) : (
-                <ul className="space-y-2">
-                  {draftItems.map((it, idx) => (
-                    <li key={idx} className="surface rounded-xl border px-3 py-2.5 flex items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-default truncate">{it.name}</p>
-                        <p className="text-xs text-soft">{money(it.unitPrice)} c/u · {money(it.unitPrice * it.qty)}</p>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <button onClick={() => changeQty(idx, -1)} className="w-7 h-7 rounded-lg border border-default text-soft hover:bg-surface-2 font-medium">−</button>
-                        <span className="w-6 text-center text-sm font-semibold text-default">{it.qty}</span>
-                        <button onClick={() => changeQty(idx, 1)} className="w-7 h-7 rounded-lg border border-default text-soft hover:bg-surface-2 font-medium">+</button>
-                        <button onClick={() => removeItem(idx)} className="ml-1 text-soft hover:text-red-500 text-lg leading-none px-1">×</button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            {/* Footer actions */}
-            <div className="surface border-t px-5 py-4 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-soft">Total</span>
-                <span className="text-xl font-bold text-default">{money(draftSubtotal)}</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => saveItems()}
-                  disabled={savingItems || !!acting}
-                  className="px-3 py-2.5 rounded-xl border border-default text-default text-sm font-medium hover:bg-surface-2 disabled:opacity-50"
-                >
-                  {savingItems ? 'Guardando…' : 'Guardar'}
-                </button>
-                <button
-                  onClick={sendToKitchen}
-                  disabled={savingItems || !!acting || draftItems.length === 0}
-                  className="px-3 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 disabled:opacity-50"
-                >
-                  {acting === 'kitchen' ? 'Enviando…' : 'Enviar a cocina'}
-                </button>
-                <button
-                  onClick={requestBill}
-                  disabled={!!acting || draftItems.length === 0}
-                  className="px-3 py-2.5 rounded-xl bg-brand-50 text-ink-900 text-sm font-medium hover:bg-brand-100 disabled:opacity-50"
-                >
-                  {acting === 'bill' ? 'Pidiendo…' : 'Pedir cuenta'}
-                </button>
-                <button
-                  onClick={chargeAndClose}
-                  disabled={!!acting || draftItems.length === 0}
-                  className="px-3 py-2.5 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  {acting === 'close' ? 'Cobrando…' : 'Cobrar y cerrar'}
-                </button>
-              </div>
+      {/* QR de mesa */}
+      {qrModal && (
+        <div className="fixed inset-0 z-[70] bg-ink-900/60 flex items-center justify-center p-4" onClick={() => setQrModal(null)}>
+          <div className="surface rounded-2xl border p-6 max-w-xs w-full text-center" onClick={(e) => e.stopPropagation()}>
+            <p className="text-sm font-semibold text-default mb-1">QR · {qrModal.name}</p>
+            <p className="text-xs text-soft mb-4">El cliente lo escanea para ver su cuenta, pedir la cuenta y llamar al mesero.</p>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qrModal.dataUrl} alt={`QR ${qrModal.name}`} className="mx-auto rounded-xl border border-default" width={240} height={240} />
+            <p className="text-[10px] text-soft mt-3 break-all">{qrModal.url}</p>
+            <div className="flex gap-2 mt-4">
+              <a href={qrModal.dataUrl} download={`QR-${qrModal.name}.png`}
+                className="flex-1 bg-brand text-ink-900 py-2.5 rounded-lg text-sm font-semibold hover:bg-brand-300">
+                Descargar
+              </a>
+              <button onClick={() => setQrModal(null)}
+                className="px-4 py-2.5 rounded-lg text-sm border border-default text-default hover:bg-black/5 dark:hover:bg-white/5">
+                Cerrar
+              </button>
             </div>
           </div>
         </div>

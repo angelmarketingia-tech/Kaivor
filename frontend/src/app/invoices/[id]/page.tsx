@@ -5,6 +5,7 @@ import { useRouter, useParams } from 'next/navigation';
 import axios from 'axios';
 import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
+import { downloadInvoicePdf, shareInvoicePdf, type PdfInvoice } from '@/lib/invoicePdf';
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 const fmt = (n: number) => `$${Math.round(n).toLocaleString('es-CO')}`;
@@ -193,7 +194,7 @@ function generateInvoicePDF(inv: Invoice, b: Branding): string {
       </div>
     </div>
     ${inv.notes ? `<div style="margin-top:24px;padding:12px;background:#fffbeb;border-radius:8px;font-size:12px;color:#92400e"><strong>Notas:</strong> ${inv.notes}</div>` : ''}
-    ${inv.dianStatus ? `<div style="margin-top:16px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:11px;color:#166534"><strong>Estado DIAN:</strong> ${inv.dianStatus.toUpperCase()}${inv.dianCude ? `<br><span style="font-size:10px">CUFE: ${inv.dianCude}</span>` : ''}</div>` : `<div style="margin-top:16px;padding:12px;background:#f8fafc;border-radius:8px;font-size:11px;color:#64748b">Factura generada en Kaivor. DIAN no configurada para emisión electrónica.</div>`}
+    ${inv.dianStatus === 'accepted' ? `<div style="margin-top:16px;padding:12px;background:#f0fdf4;border-radius:8px;font-size:11px;color:#166534"><strong>Factura electrónica DIAN — Aceptada</strong>${inv.dianCude ? `<br><span style="font-size:10px">CUFE: ${inv.dianCude}</span>` : ''}</div>` : `<div style="margin-top:16px;padding:12px;background:#fffbeb;border-radius:8px;font-size:11px;color:#92400e"><strong>Comprobante interno</strong> — No es factura electrónica DIAN.</div>`}
     <div style="margin-top:24px;text-align:center;border-top:1px solid #e2e8f0;padding-top:16px">
       <p style="font-size:13px;color:#475569;font-weight:600">${b.footerMessage || 'Gracias por su compra.'}</p>
       ${b.legalNote ? `<p style="font-size:10px;color:#94a3b8;margin-top:4px">${b.legalNote}</p>` : ''}
@@ -250,14 +251,74 @@ export default function InvoiceDetailPage() {
     axios.post(`${API}/invoices/${id}/print-log`, { type: 'receipt', paperSize }, { headers }).catch(() => {});
   };
 
-  const printInvoicePDF = () => {
-    if (!invoice) return;
-    const w = window.open('', '_blank', 'width=900,height=700,scrollbars=yes');
-    if (!w) return;
+  const openInvoicePDF = (): boolean => {
+    if (!invoice) return false;
+    // No window features: mobile browsers ignore/abort sized popups. A plain
+    // _blank tab is reliable on both desktop and mobile.
+    const w = window.open('', '_blank');
+    if (!w) return false;
     w.document.write(generateInvoicePDF(invoice, branding));
     w.document.close();
-    setTimeout(() => { w.print(); }, 300);
+    // Give mobile webviews a moment to lay out before invoking print.
+    setTimeout(() => { try { w.focus(); w.print(); } catch { /* user can print manually */ } }, 400);
+    return true;
+  };
+
+  const printInvoicePDF = () => {
+    if (!invoice) return;
+    if (!openInvoicePDF()) {
+      alert('Permite las ventanas emergentes para ver el PDF de la factura.');
+      return;
+    }
     axios.post(`${API}/invoices/${id}/print-log`, { type: 'invoice', paperSize: 'A4' }, { headers }).catch(() => {});
+  };
+
+  // Mapea la factura cargada al shape que espera el generador de PDF binario.
+  const toPdfInvoice = (): PdfInvoice | null => {
+    if (!invoice) return null;
+    return {
+      invoiceNumber: invoice.invoiceNumber,
+      invoiceDate: invoice.invoiceDate,
+      status: invoice.status,
+      paymentMethod: invoice.paymentMethod,
+      subtotal: invoice.subtotal, taxAmount: invoice.taxAmount,
+      discountAmount: invoice.discountAmount, total: invoice.total,
+      tipAmount: invoice.tipAmount, serviceCharge: invoice.serviceCharge, notes: invoice.notes,
+      dianStatus: invoice.dianStatus, dianCude: invoice.dianCude,
+      customer: invoice.customer, company: invoice.company,
+      items: (invoice.items || []).map((it) => ({
+        description: it.description, quantity: it.quantity, unitPrice: it.unitPrice,
+        total: it.total, taxRate: it.taxRate,
+      })),
+    };
+  };
+
+  // Branding del negocio para personalizar el PDF (logo, color, mensaje, nota legal).
+  const pdfBranding = () => ({
+    logoData: branding.logoData,
+    primaryColor: branding.primaryColor,
+    footerMessage: branding.footerMessage,
+    legalNote: branding.legalNote,
+    showLogoOnPdf: branding.showLogoOnPdf,
+  });
+
+  // Descarga un PDF binario REAL (jsPDF) PERSONALIZADO con el branding del negocio.
+  const downloadPdf = () => {
+    const inv = toPdfInvoice();
+    if (!inv) return;
+    downloadInvoicePdf(inv, pdfBranding());
+    axios.post(`${API}/invoices/${id}/print-log`, { type: 'pdf', paperSize: 'A4' }, { headers }).catch(() => {});
+  };
+
+  // Comparte el PDF personalizado como ARCHIVO por la hoja nativa (móvil); cae a descarga.
+  const shareInvoice = async () => {
+    const inv = toPdfInvoice();
+    if (!inv) return;
+    try {
+      await shareInvoicePdf(inv, pdfBranding());
+    } catch {
+      alert('No se pudo compartir en este dispositivo.');
+    }
   };
 
   const sendWhatsApp = async () => {
@@ -349,25 +410,33 @@ export default function InvoiceDetailPage() {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-default">
+          <div className="flex flex-wrap gap-2.5 mt-4 pt-4 border-t border-default">
             <button onClick={printReceipt}
-              className="flex items-center gap-1.5 px-3 py-2 bg-ink-900 text-white text-sm rounded-lg hover:bg-ink-700 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-ink-900 text-white text-sm rounded-lg hover:bg-ink-700 transition-colors">
               🖨 Tirilla
             </button>
+            <button onClick={downloadPdf}
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+              📄 Descargar PDF
+            </button>
+            <button onClick={shareInvoice}
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+              📤 Compartir
+            </button>
             <button onClick={printInvoicePDF}
-              className="flex items-center gap-1.5 px-3 py-2 surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
-              📄 PDF
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+              🖨 Imprimir
             </button>
             <button onClick={sendWhatsApp} disabled={waLoading}
-              className="flex items-center gap-1.5 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50 transition-colors">
               {waLoading ? '...' : '💬 WhatsApp'}
             </button>
             <button onClick={() => alert('Configura Gmail en Configuración > Integraciones para enviar por email.')}
-              className="flex items-center gap-1.5 px-3 py-2 surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] surface-2 text-default text-sm rounded-lg hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
               ✉ Email
             </button>
             <Link href="/invoices/create"
-              className="flex items-center gap-1.5 px-3 py-2 bg-brand text-ink-900 text-sm rounded-lg hover:bg-brand-300 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-2.5 min-h-[44px] bg-brand text-ink-900 text-sm rounded-lg hover:bg-brand-300 transition-colors">
               + Nueva factura
             </Link>
           </div>
@@ -437,7 +506,7 @@ export default function InvoiceDetailPage() {
                 <tbody className="divide-y divide-default">
                   {invoice.items.map(item => (
                     <tr key={item.id}>
-                      <td className="px-5 py-3.5 text-sm text-default">
+                      <td className="px-5 py-3.5 text-sm text-default break-words">
                         {item.description}
                         {item.discountValue > 0 && <span className="ml-2 text-xs text-emerald-600">-{item.discountType === 'percent' ? `${item.discountValue}%` : fmt(item.discountValue)}</span>}
                       </td>
@@ -473,18 +542,25 @@ export default function InvoiceDetailPage() {
                     <p className="text-sm text-amber-800">{invoice.notes}</p>
                   </div>
                 )}
-                {invoice.dianStatus && (
+                {invoice.dianStatus === 'accepted' ? (
+                  // Solo VERDE si la DIAN aceptó de verdad (proveedor real).
                   <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
-                    <p className="text-xs text-emerald-700 font-medium uppercase mb-1">Estado DIAN</p>
-                    <p className="text-sm font-semibold text-emerald-800">{invoice.dianStatus.toUpperCase()}</p>
+                    <p className="text-xs text-emerald-700 font-medium uppercase mb-1">Factura electrónica DIAN</p>
+                    <p className="text-sm font-semibold text-emerald-800">Aceptada por la DIAN</p>
                     {invoice.dianCude && <p className="text-xs text-emerald-600 mt-1 break-all">CUFE: {invoice.dianCude}</p>}
                   </div>
-                )}
+                ) : invoice.dianStatus ? (
+                  // sandbox/pending/etc → ámbar, honesto: NO es factura legal aún.
+                  <div className="bg-amber-50 border border-amber-100 rounded-xl p-4">
+                    <p className="text-xs text-amber-700 font-medium uppercase mb-1">Comprobante interno</p>
+                    <p className="text-sm text-amber-800">No es factura electrónica DIAN. Estado: {invoice.dianStatus}.</p>
+                  </div>
+                ) : null}
               </div>
             )}
             {!invoice.dianStatus && (
               <div className="surface-2 border border-default rounded-xl p-4 text-sm text-soft">
-                DIAN no configurada para emisión electrónica. Factura generada en Kaivor.
+                <strong className="text-default">Comprobante interno.</strong> No es factura electrónica DIAN — para emisión legal se requiere un proveedor tecnológico autorizado.
               </div>
             )}
           </div>
